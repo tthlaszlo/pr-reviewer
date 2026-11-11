@@ -44,8 +44,8 @@ describe('HTTP application and authentication', () => {
   let store: MemoryStore;
   let github: GitHub;
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'pr-reviewer-'));
-    await writeFile(join(root, 'index.html'), '<h1>PR Reviewer</h1>');
+    root = await mkdtemp(join(tmpdir(), 'ai-buddy-'));
+    await writeFile(join(root, 'index.html'), '<h1>AI Buddy</h1>');
     store = new MemoryStore();
     github = new GitHub();
     app = await buildApp({ clientRoot: root, config, store, github });
@@ -62,7 +62,7 @@ describe('HTTP application and authentication', () => {
     ]) {
       const result = await app.inject(path);
       expect(result.statusCode).toBe(200);
-      expect(result.body).toBe('<h1>PR Reviewer</h1>');
+      expect(result.body).toBe('<h1>AI Buddy</h1>');
     }
   });
   it('scopes authored PR requests to the authenticated user', async () => {
@@ -90,7 +90,7 @@ describe('HTTP application and authentication', () => {
     expect((await app.inject('/healthz')).statusCode).toBe(503);
     const response = await app.inject('/');
     expect(response.statusCode).toBe(200);
-    expect(response.body).toBe('<h1>PR Reviewer</h1>');
+    expect(response.body).toBe('<h1>AI Buddy</h1>');
     expect(response.headers['content-security-policy']).toContain(
       "frame-ancestors 'none'",
     );

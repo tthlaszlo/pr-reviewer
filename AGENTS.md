@@ -1,4 +1,4 @@
-# Projekt- és fejlesztési szabályok
+# AI Buddy — projekt- és fejlesztési szabályok
 
 ## Munka megkezdése
 
@@ -37,7 +37,7 @@
 
 ## Termék és jelenlegi hatókör
 
-- A termék célja a PR-reviewk részleges automatizálása.
+- A termék neve AI Buddy; hosszabb távon több fejlesztői tool közös munkafelülete. Az első tool a PR-reviewk részleges automatizálását támogatja.
 - A PR-lista a felhasználónak személyesen, illetve a csapatain keresztül érkező review-kéréseket fogja össze.
 - A kért csoportok: még nem adott reviewt; már adott reviewt és a PR várakozik; újra meghívták reviewra.
 - A review részletes működését és beállításait, az AI-agenteket, az eredményoldalt és a GitHubra posztolást később tervezzük és valósítjuk meg. Ezekhez egyelőre ne jelenjen meg külön menüpont.

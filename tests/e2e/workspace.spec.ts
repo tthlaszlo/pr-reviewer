@@ -27,7 +27,7 @@ test('shows only pull request subpages and preserves Focus design', async ({
   page,
 }) => {
   await page.goto('/');
-  await expect(page).toHaveTitle('PR Reviewer');
+  await expect(page).toHaveTitle('AI Buddy');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Your review inbox',
   );

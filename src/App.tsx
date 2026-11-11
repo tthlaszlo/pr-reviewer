@@ -3,6 +3,7 @@ import {
   GitPullRequest,
   Inbox as InboxIcon,
   UserRound,
+  Bot,
   RefreshCw,
   GitBranch as Github,
   ExternalLink,
@@ -131,12 +132,12 @@ export function App() {
     <div className="shell">
       <aside>
         <a className="brand" href="/">
-          <GitPullRequest size={22} />
+          <Bot size={22} />
           <span>
-            PR Reviewer<small>FOCUS WORKSPACE</small>
+            AI Buddy<small>DEVELOPER TOOLS</small>
           </span>
         </a>
-        <div className="workspace-label">WORKSPACE</div>
+        <div className="workspace-label">TOOLS</div>
         <nav aria-label="Main navigation">
           <div className="nav-parent">
             <GitPullRequest size={16} />

@@ -1,6 +1,6 @@
-# PR Reviewer
+# AI Buddy
 
-A focused inbox for GitHub pull request reviews. Personal and team requests are grouped into **Awaiting my review**, **Reviewed · waiting**, and **Review requested again**. The interface follows the [Focus design system](docs/DESIGN_SYSTEM.md).
+AI Buddy is a workspace for AI-assisted developer tools. Its first tool is a focused inbox for GitHub pull request reviews. Personal and team requests are grouped into **Awaiting my review**, **Reviewed · waiting**, and **Review requested again**. The interface follows the [Focus design system](docs/DESIGN_SYSTEM.md).
 
 The Pull requests navigation contains two subpages: **Review requests** (`/pull-requests/review-requests`) and **My pull requests** (`/pull-requests/mine`). The latter lists open PRs authored by the signed-in user, independently of review invitations. Review configuration, AI agents, results, and publishing have no menu entries. This version never runs an AI review or posts to GitHub.
 
@@ -103,3 +103,7 @@ Sources: [Sevalla Dockerfile builds](https://docs.sevalla.com/applications/build
 ## Contribution workflow
 
 Follow [AGENTS.md](AGENTS.md). Every development change goes through its own feature branch and PR. Do not push development changes directly to `main`. Require the **Docker verification** CI check before merging; repository administrators should enable branch protection for `main` with pull requests and passing checks required. Merge only reviewed, stable changes.
+
+## Existing local databases
+
+When upgrading from the original `pr-reviewer` Compose project, set `DATABASE_VOLUME=pr-reviewer_database` in your existing `.env` to reuse its database. Stop the previous stack with `docker compose -p pr-reviewer stop app db` before starting AI Buddy to release the web port. The default for new installations is `ai-buddy_database`.

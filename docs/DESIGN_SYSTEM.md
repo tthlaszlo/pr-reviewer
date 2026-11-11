@@ -1,8 +1,8 @@
-# Focus — PR Reviewer design system
+# Focus — AI Buddy design system
 
 Állapot: elfogadott designirány, 2026. november 11.
 
-Ez a dokumentum a PR Reviewer felületének kötelező vizuális alapja. Minden új képernyő, komponens és placeholder ezt kövesse. A design dokumentálása nem engedély az alkalmazás fejlesztésének megkezdésére.
+Ez a dokumentum a AI Buddy felületének kötelező vizuális alapja. Minden új képernyő, komponens és placeholder ezt kövesse. A design dokumentálása nem engedély az alkalmazás fejlesztésének megkezdésére.
 
 ## Elfogadott megjelenés
 

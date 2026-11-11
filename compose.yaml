@@ -1,4 +1,4 @@
-name: pr-reviewer
+name: ai-buddy
 services:
   app:
     build:
@@ -78,3 +78,4 @@ services:
       retries: 20
 volumes:
   database:
+    name: ${DATABASE_VOLUME:-ai-buddy_database}

@@ -1,5 +1,6 @@
-# Initial implementation decisions
+# AI Buddy — initial implementation decisions
 
+- **Product structure:** AI Buddy is a workspace for multiple developer tools. Pull requests is the first tool, with review-request and authored-PR subpages; no additional tool behavior is implemented yet.
 - **TypeScript, React/Vite, Fastify:** shared request/result types, a compact client, and one deployable server process. Runtime inputs and configuration are checked on the server. The application does not depend on the host's GitHub CLI session.
 - **PostgreSQL:** supports hosted sessions without attaching an instance-specific disk. This replaces the planning-stage SQLite suggestion because Sevalla is the production target. Local development and integration tests use separate PostgreSQL containers.
 - **GitHub App user authorization:** fine-grained read access and installation-scoped repositories. Review publishing is excluded. Expiring tokens end the local session; this version does not store or refresh refresh tokens.

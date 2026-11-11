@@ -20,14 +20,14 @@ jobs:
       - name: Typecheck, unit, integration, build and browser tests
         run: docker compose --profile test run --build --rm test
       - name: Build production image
-        run: docker build --target production -t pr-reviewer:ci .
+        run: docker build --target production -t ai-buddy:ci .
       - name: Smoke-test production image
         run: |
           docker compose up -d --wait db
-          docker run -d --name production-smoke --network pr-reviewer_default -p 127.0.0.1:8080:8080 -e APP_URL=https://pr-reviewer.example -e DATABASE_URL=postgres://reviewer:reviewer@db:5432/reviewer pr-reviewer:ci
+          docker run -d --name production-smoke --network ai-buddy_default -p 127.0.0.1:8080:8080 -e APP_URL=https://ai-buddy.example -e DATABASE_URL=postgres://reviewer:reviewer@db:5432/reviewer ai-buddy:ci
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:8080/healthz; then
-              curl --fail --silent http://127.0.0.1:8080/ | grep -q 'PR Reviewer'
+              curl --fail --silent http://127.0.0.1:8080/ | grep -q 'AI Buddy'
               exit 0
             fi
             sleep 1

@@ -89,6 +89,8 @@ describe('workspace', () => {
     mockApi({ configured: false, user: null, installUrl: null });
     render(<App />);
     expect(screen.getByText('Loading your workspace')).toBeVisible();
+    expect(screen.getByRole('link', { name: /AI Buddy/ })).toBeVisible();
+    expect(screen.queryByText('PR Reviewer')).not.toBeInTheDocument();
     await screen.findByRole('button', {
       name: 'GitHub connection not configured',
     });
