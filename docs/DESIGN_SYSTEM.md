@@ -2,7 +2,7 @@
 
 Állapot: elfogadott designirány, 2026. november 11.
 
-Ez a dokumentum a AI Buddy felületének kötelező vizuális alapja. Minden új képernyő, komponens és placeholder ezt kövesse. A design dokumentálása nem engedély az alkalmazás fejlesztésének megkezdésére.
+Ez a dokumentum az AI Buddy felületének kötelező vizuális alapja. Minden új képernyő, komponens és placeholder ezt kövesse. A design dokumentálása nem engedély az alkalmazás fejlesztésének megkezdésére.
 
 ## Elfogadott megjelenés
 
@@ -130,3 +130,9 @@ A képernyőnkénti műveletek számát a tényleges feladat indokolja. Az aktu�
 - A Focus irányt, a világos alapértelmezést és a 15 px-es külső lekerekítést csak kifejezett felhasználói kérésre változtassuk meg.
 - A felhasználó által jóváhagyott módosításokat ebben a dokumentumban is vezessük át.
 - A design system nem dönt technológiai keretrendszerről, és nem bővíti automatikusan a fejlesztés funkcionális hatókörét.
+
+## Bejelentkezési oldal
+
+A `/login` önálló, világos Focus felület, 15 px-es külső kerettel. Asztalon rövid termékbemutató és szegélyes belépőkártya jelenik meg; mobilon a kártya az elsődleges. A bemutató címe 32–46 px, a kártya címe 22 px. A bejelentkezési módok kizárólag Google és GitHub, külön, legalább 48 px magas gombokkal; nincs jelszavas, e-mailes vagy vendégbelépés. A Google G jelének négy márkaszíne kizárólag a szolgáltató logójában használható, nem képez új felületi színpalettát.
+
+A munkafelület navigációja bejelentkezés előtt nem látható. A még nem konfigurált szolgáltató gombja tiltott, szöveges elérhetőségi magyarázattal. A betöltés, a megszakított/sikertelen belépés és az elérhetőségi hiba külön visszajelzést kap. A Google-belépés és a tool GitHub-kapcsolata külön fogalom; a bejelentkezett Google-fiókhoz a PR-toolban külön Connect GitHub művelet tartozik.

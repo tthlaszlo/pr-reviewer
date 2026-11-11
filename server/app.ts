@@ -4,7 +4,9 @@ import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import type { Config } from './config.js';
 import type { Store } from './store.js';
-import { decrypt, encrypt, randomToken } from './crypto.js';
+import { decrypt } from './crypto.js';
+import { Google } from './google.js';
+import { registerAuth, safeReturnTo } from './auth.js';
 import { GitHub, GitHubError } from './github.js';
 
 export async function buildApp(options: {
@@ -12,6 +14,7 @@ export async function buildApp(options: {
   config: Config;
   store: Store;
   github?: GitHub;
+  google?: Google;
   logger?: boolean;
 }) {
   const { config, store, clientRoot } = options;
@@ -37,7 +40,14 @@ export async function buildApp(options: {
       'Content-Security-Policy',
       "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
     );
-    if (request.url.startsWith('/api') || request.url.startsWith('/auth'))
+    const pathname = request.url.split('?')[0];
+    if (
+      pathname.startsWith('/api') ||
+      pathname.startsWith('/auth') ||
+      pathname === '/' ||
+      pathname === '/login' ||
+      pathname.startsWith('/pull-requests/')
+    )
       reply.header('Cache-Control', 'no-store');
   });
   app.setErrorHandler((error, _request, reply) => {
@@ -77,68 +87,16 @@ export async function buildApp(options: {
   app.get('/api/session', async (request) => {
     const user = await session(request.cookies.session);
     return {
-      configured: config.configured,
-      user: user ? { login: user.login } : null,
+      providers: config.providers,
+      user: user?.user ?? null,
+      github: {
+        connected: Boolean(user?.github && user.github.expiresAt > Date.now()),
+        login: user?.github?.login ?? null,
+      },
       installUrl: config.installUrl,
     };
   });
-  app.get('/auth/github', async (_request, reply) => {
-    if (!config.configured)
-      return reply.code(503).send({ error: 'github_not_configured' });
-    const state = randomToken();
-    await store.saveState(state);
-    const url = new URL('https://github.com/login/oauth/authorize');
-    url.search = new URLSearchParams({
-      client_id: config.clientId,
-      redirect_uri: `${config.appUrl}/auth/github/callback`,
-      state,
-    }).toString();
-    return reply
-      .setCookie('oauth_state', state, { ...cookieOptions, maxAge: 600 })
-      .redirect(url.href);
-  });
-  app.get<{ Querystring: { code?: string; state?: string; error?: string } }>(
-    '/auth/github/callback',
-    async (request, reply) => {
-      const { code, state, error } = request.query;
-      reply.clearCookie('oauth_state', cookieOptions);
-      if (
-        !config.configured ||
-        error ||
-        !code ||
-        !state ||
-        state !== request.cookies.oauth_state ||
-        !(await store.consumeState(state))
-      ) {
-        return reply.redirect('/?auth=failed');
-      }
-      try {
-        const token = await github.exchange(
-          code,
-          config.clientId,
-          config.clientSecret,
-          `${config.appUrl}/auth/github/callback`,
-        );
-        const user = await github.user(token.accessToken);
-        const id = randomToken();
-        await store.saveSession(
-          id,
-          {
-            login: user.login,
-            encryptedToken: encrypt(token.accessToken, config.encryptionKey),
-          },
-          token.ttl,
-        );
-        if (request.cookies.session)
-          await store.deleteSession(request.cookies.session);
-        return reply
-          .setCookie('session', id, { ...cookieOptions, maxAge: token.ttl })
-          .redirect('/');
-      } catch {
-        return reply.redirect('/?auth=failed');
-      }
-    },
-  );
+  registerAuth(app, config, store, github, options.google ?? new Google());
   app.post('/api/logout', async (request, reply) => {
     if (request.headers.origin !== config.appUrl)
       return reply.code(403).send({ error: 'invalid_origin' });
@@ -156,10 +114,12 @@ export async function buildApp(options: {
       async (request, reply) => {
         const user = await session(request.cookies.session);
         if (!user) return reply.code(401).send({ error: 'unauthenticated' });
+        if (!user.github || user.github.expiresAt <= Date.now())
+          return reply.code(403).send({ error: 'github_connection_required' });
         try {
           return await github.inbox(
-            decrypt(user.encryptedToken, config.encryptionKey),
-            user.login,
+            decrypt(user.github.encryptedToken, config.encryptionKey),
+            user.github.login,
             mode,
           );
         } catch (error) {
@@ -167,8 +127,7 @@ export async function buildApp(options: {
             error instanceof GitHubError &&
             error.code === 'github_unauthorized'
           ) {
-            await store.deleteSession(request.cookies.session!);
-            reply.clearCookie('session', cookieOptions);
+            await store.setGitHub(request.cookies.session!, null);
           }
           throw error;
         }
@@ -176,11 +135,26 @@ export async function buildApp(options: {
     );
   }
   await app.register(fastifyStatic, { root: clientRoot });
+  app.get<{ Querystring: { returnTo?: string } }>(
+    '/login',
+    async (request, reply) => {
+      if (await session(request.cookies.session))
+        return reply.redirect(safeReturnTo(request.query.returnTo));
+      return reply.header('Cache-Control', 'no-store').sendFile('index.html');
+    },
+  );
   for (const path of [
+    '/',
     '/pull-requests/review-requests',
     '/pull-requests/mine',
   ]) {
-    app.get(path, (_request, reply) => reply.sendFile('index.html'));
+    app.get(path, async (request, reply) => {
+      if (!(await session(request.cookies.session)))
+        return reply.redirect(
+          `/login?returnTo=${encodeURIComponent(safeReturnTo(path))}`,
+        );
+      return reply.header('Cache-Control', 'no-store').sendFile('index.html');
+    });
   }
   return app;
 }

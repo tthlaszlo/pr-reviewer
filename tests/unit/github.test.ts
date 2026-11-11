@@ -194,7 +194,7 @@ describe('GitHub integration', () => {
       .mockResolvedValueOnce(
         json({ access_token: 'token', expires_in: 999999 }),
       )
-      .mockResolvedValueOnce(json({ login: 'lacko' }));
+      .mockResolvedValueOnce(json({ id: 42, login: 'lacko' }));
     const github = new GitHub(fetcher);
     expect(
       await github.exchange(
@@ -204,7 +204,7 @@ describe('GitHub integration', () => {
         'http://localhost/callback',
       ),
     ).toEqual({ accessToken: 'token', ttl: 28800 });
-    expect(await github.user('token')).toEqual({ login: 'lacko' });
+    expect(await github.user('token')).toEqual({ id: 42, login: 'lacko' });
     expect(fetcher.mock.calls[0][1]?.body).toContain('redirect_uri');
     expect(fetcher.mock.calls[1][1]?.headers).toMatchObject({
       Authorization: 'Bearer token',

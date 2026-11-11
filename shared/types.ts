@@ -20,8 +20,11 @@ export type Inbox = {
   warnings: string[];
   syncedAt: string;
 };
+export type Provider = 'google' | 'github';
+export type Account = { id: string; name: string; provider: Provider };
 export type Session = {
-  configured: boolean;
-  user: { login: string } | null;
+  providers: Record<Provider, boolean>;
+  user: Account | null;
+  github: { connected: boolean; login: string | null };
   installUrl: string | null;
 };

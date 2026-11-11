@@ -27,7 +27,7 @@ jobs:
           docker run -d --name production-smoke --network ai-buddy_default -p 127.0.0.1:8080:8080 -e APP_URL=https://ai-buddy.example -e DATABASE_URL=postgres://reviewer:reviewer@db:5432/reviewer ai-buddy:ci
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:8080/healthz; then
-              curl --fail --silent http://127.0.0.1:8080/ | grep -q 'AI Buddy'
+              curl --fail --silent http://127.0.0.1:8080/login | grep -q 'AI Buddy'
               exit 0
             fi
             sleep 1

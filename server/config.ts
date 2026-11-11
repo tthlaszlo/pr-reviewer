@@ -23,10 +23,14 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
     throw new Error('APP_URL must be an HTTP(S) origin');
   const clientId = env.GITHUB_CLIENT_ID || '';
   const clientSecret = env.GITHUB_CLIENT_SECRET || '';
+  const googleClientId = env.GOOGLE_CLIENT_ID || '';
+  const googleClientSecret = env.GOOGLE_CLIENT_SECRET || '';
+  if (Boolean(googleClientId) !== Boolean(googleClientSecret))
+    throw new Error('Set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET');
   const encryptionKey = env.TOKEN_ENCRYPTION_KEY || '';
   if (Boolean(clientId) !== Boolean(clientSecret))
     throw new Error('Set both GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET');
-  if (clientId && !/^[a-fA-F0-9]{64}$/.test(encryptionKey))
+  if ((clientId || googleClientId) && !/^[a-fA-F0-9]{64}$/.test(encryptionKey))
     throw new Error(
       'TOKEN_ENCRYPTION_KEY must contain 64 hexadecimal characters',
     );
@@ -42,6 +46,9 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
     appUrl: appUrl.origin,
     clientId,
     clientSecret,
+    googleClientId,
+    googleClientSecret,
+    providers: { github: Boolean(clientId), google: Boolean(googleClientId) },
     encryptionKey,
     installUrl,
     configured: Boolean(clientId),

@@ -12,6 +12,7 @@ import {
   CircleAlert,
 } from 'lucide-react';
 import type { Group, Inbox, Session } from '../shared/types';
+import { Login } from './Login';
 
 const sections = {
   inbox: {
@@ -31,7 +32,11 @@ const sections = {
 } as const;
 type Page = keyof typeof sections;
 const pageFromPath = (): Page =>
-  window.location.pathname === sections.mine.path ? 'mine' : 'inbox';
+  window.location.pathname === sections.mine.path ||
+  new URLSearchParams(window.location.search).get('returnTo') ===
+    sections.mine.path
+    ? 'mine'
+    : 'inbox';
 const groups: { id: Group; label: string }[] = [
   { id: 'awaiting', label: 'Awaiting my review' },
   { id: 'waiting', label: 'Reviewed · waiting' },
@@ -40,7 +45,8 @@ const groups: { id: Group; label: string }[] = [
 const messages: Record<string, string> = {
   unauthenticated: 'Your session has expired. Sign in to GitHub again.',
   github_unauthorized:
-    'GitHub access has expired or been revoked. Sign in again.',
+    'GitHub access has expired or been revoked. Reconnect GitHub.',
+  github_connection_required: 'Connect GitHub to load pull requests.',
   github_permissions:
     'GitHub access is incomplete. Check the app installation and organization approval.',
   rate_limited: 'GitHub is limiting requests. Wait a minute before refreshing.',
@@ -82,15 +88,38 @@ export function App() {
       const value = await api<Session>('/api/session');
       if (id !== requestId.current) return;
       setSession(value);
-      const data = value.user
-        ? await api<Inbox>(page === 'mine' ? '/api/my-pulls' : '/api/inbox')
-        : null;
+      if (!value.user && window.location.pathname !== '/login')
+        window.history.replaceState(
+          {},
+          '',
+          `/login?returnTo=${encodeURIComponent(sections[page].path)}`,
+        );
+      if (value.user && window.location.pathname === '/login')
+        window.history.replaceState({}, '', sections[page].path);
+      const data =
+        value.user && value.github.connected
+          ? await api<Inbox>(page === 'mine' ? '/api/my-pulls' : '/api/inbox')
+          : null;
       if (id === requestId.current) setInbox(data);
     } catch (cause) {
-      if (id === requestId.current)
-        setError(
-          cause instanceof Error ? cause.message : 'service_unavailable',
-        );
+      if (id === requestId.current) {
+        const message =
+          cause instanceof Error ? cause.message : 'service_unavailable';
+        if (message === 'unauthenticated') {
+          setSession((value) =>
+            value
+              ? {
+                  ...value,
+                  user: null,
+                  github: { connected: false, login: null },
+                }
+              : value,
+          );
+          setInbox(null);
+          window.history.replaceState({}, '', '/login');
+        }
+        setError(message);
+      }
     } finally {
       if (id === requestId.current) setLoading(false);
     }
@@ -111,7 +140,12 @@ export function App() {
       await api('/api/logout', 'POST');
       requestId.current++;
       setLoading(false);
-      setSession((value) => (value ? { ...value, user: null } : value));
+      setSession((value) =>
+        value
+          ? { ...value, user: null, github: { connected: false, login: null } }
+          : value,
+      );
+      window.history.replaceState({}, '', '/login');
       setInbox(null);
       setError('');
     } catch {
@@ -120,6 +154,15 @@ export function App() {
       setLoggingOut(false);
     }
   }
+  if (!session?.user)
+    return (
+      <Login
+        session={session}
+        loading={loading}
+        error={error}
+        onRetry={() => void load()}
+      />
+    );
   const rows =
     inbox?.pulls.filter(
       (pr) =>
@@ -173,11 +216,11 @@ export function App() {
         <div className="account">
           <Github size={17} />
           <span>
-            {session?.user?.login ?? 'GitHub not connected'}
+            {session.user.name}
             <small>
-              {session?.user
-                ? 'Connected account'
-                : 'Connect your account to begin'}
+              {session.user.provider === 'google'
+                ? 'Google account'
+                : 'GitHub account'}
             </small>
           </span>
           {session?.user && (
@@ -204,7 +247,7 @@ export function App() {
           {
             <button
               className="secondary"
-              disabled={loading || !session?.user}
+              disabled={loading || !session.github.connected}
               onClick={() => void load()}
             >
               <RefreshCw size={15} className={loading ? 'spinning' : ''} />
@@ -294,17 +337,19 @@ export function App() {
                 >
                   Try again
                 </button>
-                {['unauthenticated', 'github_unauthorized'].includes(error) && (
-                  <a className="primary" href="/auth/github">
-                    Sign in again
+                {['github_connection_required', 'github_unauthorized'].includes(
+                  error,
+                ) && (
+                  <a className="primary" href="/auth/github?intent=connect">
+                    Reconnect GitHub
                   </a>
                 )}
               </div>
             )}
-            {new URLSearchParams(window.location.search).get('auth') ===
+            {new URLSearchParams(window.location.search).get('connection') ===
               'failed' && (
               <div role="alert" className="notice">
-                GitHub sign-in was cancelled or failed. Please try again.
+                GitHub connection failed. Please try again.
               </div>
             )}
             {inbox?.warnings.map((warning) => (
@@ -327,25 +372,25 @@ export function App() {
                   <h2>Loading your workspace</h2>
                   <p>Checking your GitHub connection and pull requests.</p>
                 </div>
-              ) : !session?.user ? (
+              ) : !session.github.connected ? (
                 <div className="empty">
                   <div className="empty-icon">
                     <Github size={25} />
                   </div>
                   <h2>
                     {section === 'mine'
-                      ? 'Keep track of your pull requests'
-                      : 'Bring your review queue into focus'}
+                      ? 'Connect GitHub to see your pull requests'
+                      : 'Connect your GitHub account'}
                   </h2>
                   <p>
                     {section === 'mine'
-                      ? 'Sign in with GitHub to see the pull requests you have opened.'
-                      : 'Sign in with GitHub to see requests for you and your teams.'}
+                      ? 'Your Google sign-in is ready. Connect GitHub to load your pull requests.'
+                      : 'Connect GitHub to see personal and team review requests.'}
                   </p>
-                  {session?.configured ? (
-                    <a className="primary" href="/auth/github">
+                  {session.providers.github ? (
+                    <a className="primary" href="/auth/github?intent=connect">
                       <Github size={16} />
-                      Sign in with GitHub
+                      Connect GitHub
                     </a>
                   ) : (
                     <>
@@ -354,7 +399,7 @@ export function App() {
                       </button>
                       <p className="muted">
                         Your workspace administrator needs to configure GitHub
-                        sign-in.
+                        access.
                       </p>
                     </>
                   )}

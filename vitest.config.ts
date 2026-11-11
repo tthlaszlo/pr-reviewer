@@ -9,8 +9,8 @@ export default defineConfig({
     setupFiles: ['tests/setup.ts'],
     coverage: {
       provider: 'v8',
-      include: ['server/**/*.ts', 'src/App.tsx'],
-      exclude: ['server/index.ts'],
+      include: ['server/**/*.ts', 'src/**/*.tsx'],
+      exclude: ['server/index.ts', 'src/main.tsx'],
       reporter: ['text', 'lcov'],
       thresholds: { statements: 90, branches: 80, functions: 90, lines: 90 },
     },

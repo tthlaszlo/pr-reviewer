@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import type { Inbox, Session } from '../../shared/types';
 const connected: Session = {
-  configured: true,
-  user: { login: 'lacko' },
+  providers: { google: true, github: true },
+  user: { id: '1', name: 'Lacko', provider: 'github' },
+  github: { connected: true, login: 'lacko' },
   installUrl: 'https://github.com/apps/reviewer/installations/new',
 };
 const base = {
@@ -85,25 +86,51 @@ describe('workspace', () => {
     fireEvent.keyDown(first, { key: 'Escape' });
     expect(first).toHaveFocus();
   });
-  it('shows loading, then a disconnected inbox with unknown counts', async () => {
-    mockApi({ configured: false, user: null, installUrl: null });
-    render(<App />);
-    expect(screen.getByText('Loading your workspace')).toBeVisible();
-    expect(screen.getByRole('link', { name: /AI Buddy/ })).toBeVisible();
-    expect(screen.queryByText('PR Reviewer')).not.toBeInTheDocument();
-    await screen.findByRole('button', {
-      name: 'GitHub connection not configured',
+  it('shows only Google/GitHub login and hides workspace until authenticated', async () => {
+    mockApi({
+      ...connected,
+      user: null,
+      github: { connected: false, login: null },
+      providers: { google: false, github: false },
     });
-    expect(screen.getAllByText('—')).toHaveLength(3);
-    expect(screen.getByRole('button', { name: 'Refresh' })).toBeDisabled();
+    render(<App />);
+    expect(screen.getByText('Checking sign-in options…')).toBeVisible();
+    await screen.findByText('Google sign-in is not configured yet.');
+    expect(
+      screen.getByRole('button', { name: 'Sign in with Google' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Sign in with GitHub' }),
+    ).toBeDisabled();
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe('/login');
   });
-  it('offers configured GitHub sign-in without fabricating any PRs', async () => {
+  it('offers exactly two configured sign-in providers and preserves a safe destination', async () => {
+    window.history.replaceState({}, '', '/login?returnTo=/pull-requests/mine');
     mockApi({ ...connected, user: null });
     render(<App />);
     expect(
-      await screen.findByRole('link', { name: 'Sign in with GitHub' }),
-    ).toHaveAttribute('href', '/auth/github');
-    expect(screen.queryByText('Fix authorization')).not.toBeInTheDocument();
+      await screen.findByRole('link', { name: 'Sign in with Google' }),
+    ).toHaveAttribute('href', '/auth/google?returnTo=%2Fpull-requests%2Fmine');
+    expect(
+      screen.getByRole('link', { name: 'Sign in with GitHub' }),
+    ).toHaveAttribute('href', '/auth/github?returnTo=%2Fpull-requests%2Fmine');
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+  it('lets Google users connect GitHub without treating sign-in as repository access', async () => {
+    mockApi({
+      ...connected,
+      user: { id: '1', name: 'Lacko Google', provider: 'google' },
+      github: { connected: false, login: null },
+    });
+    render(<App />);
+    await screen.findByText('Connect your GitHub account');
+    expect(screen.getByText('Google account')).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'Connect GitHub' }),
+    ).toHaveAttribute('href', '/auth/github?intent=connect');
+    expect(fetch).not.toHaveBeenCalledWith('/api/inbox', expect.anything());
   });
   it('shows only the two pull request subpages and loads authored PRs separately', async () => {
     mockApi();
@@ -177,9 +204,7 @@ describe('workspace', () => {
     window.history.replaceState({}, '', '/pull-requests/mine');
     mockApi({ ...connected, user: null });
     render(<App />);
-    expect(
-      await screen.findByText('Keep track of your pull requests'),
-    ).toBeVisible();
+    expect(await screen.findByText('Welcome to AI Buddy')).toBeVisible();
   });
   it('does not replace a new page with a late response from the old page', async () => {
     let resolveInbox!: (value: Response) => void;
@@ -251,11 +276,11 @@ describe('workspace', () => {
     expect(screen.getAllByText('0')).toHaveLength(3);
   });
   it('shows authentication cancellation', async () => {
-    window.history.replaceState({}, '', '/?auth=failed');
+    window.history.replaceState({}, '', '/login?auth=failed');
     mockApi({ ...connected, user: null });
     render(<App />);
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'GitHub sign-in was cancelled or failed',
+      'Sign-in was cancelled or could not be completed',
     );
     await screen.findByRole('link', { name: 'Sign in with GitHub' });
   });
@@ -269,7 +294,7 @@ describe('workspace', () => {
     );
     render(<App />);
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Something went wrong',
+      'We couldn’t check sign-in availability.',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     await screen.findByRole('link', { name: 'Sign in with GitHub' });
@@ -292,10 +317,10 @@ describe('workspace', () => {
     );
     render(<App />);
     await screen.findByRole('alert');
-    if (['unauthenticated', 'github_unauthorized'].includes(error))
+    if (error === 'github_unauthorized')
       expect(
-        screen.getByRole('link', { name: 'Sign in again' }),
-      ).toHaveAttribute('href', '/auth/github');
+        screen.getByRole('link', { name: 'Reconnect GitHub' }),
+      ).toHaveAttribute('href', '/auth/github?intent=connect');
     expect(
       screen.queryByText('You’re all caught up here'),
     ).not.toBeInTheDocument();

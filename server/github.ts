@@ -160,6 +160,7 @@ export class GitHub {
     clientId: string,
     clientSecret: string,
     redirectUri: string,
+    verifier?: string,
   ) {
     const token = await this.request<{
       access_token?: string;
@@ -170,6 +171,7 @@ export class GitHub {
       client_id: clientId,
       client_secret: clientSecret,
       redirect_uri: redirectUri,
+      ...(verifier ? { code_verifier: verifier } : {}),
     });
     if (!token.access_token || token.error)
       throw new GitHubError(401, 'github_unauthorized');
@@ -178,8 +180,13 @@ export class GitHub {
       ttl: Math.min(token.expires_in ?? 28800, 28800),
     };
   }
-  user(token: string) {
-    return this.request<User>('https://api.github.com/user', token);
+  async user(token: string) {
+    const user = await this.request<
+      User & { id: number; name?: string | null }
+    >('https://api.github.com/user', token);
+    if (!Number.isSafeInteger(user.id) || user.id <= 0 || !user.login)
+      throw new GitHubError(502, 'github_unavailable');
+    return user;
   }
 
   async inbox(

@@ -45,3 +45,5 @@
 - A korábbi technológiai és GitHub-bejelentkezési javaslatokat ne kezeld automatikusan végleges döntésként.
 
 - A Pull requests oldal két aloldala: a személyes/csapatos review-kérések és a felhasználó saját nyitott PR-jei. A három review-csoport az első aloldalon marad.
+
+- Az alkalmazásba kizárólag Google- vagy GitHub-fiókkal lehet belépni, önálló login oldalon. Nincs jelszavas, e-mailes vagy vendégbelépés. A Google-belépést külön kell kezelni a PR-tool GitHub-hozzáférésétől.

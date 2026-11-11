@@ -5,27 +5,49 @@ import { join } from 'node:path';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../server/app';
 import { readConfig, readPort } from '../../server/config';
-import { decrypt, encrypt } from '../../server/crypto';
+import { decrypt, encrypt, hashToken } from '../../server/crypto';
 import { GitHub, GitHubError } from '../../server/github';
-import type { StoredSession, Store } from '../../server/store';
-
+import { Google } from '../../server/google';
+import type {
+  StoredSession,
+  Store,
+  LoginFlow,
+  GitHubConnection,
+} from '../../server/store';
+import type { Provider } from '../../shared/types';
 const key = 'ab'.repeat(32);
 const config = readConfig({
   APP_URL: 'http://localhost:3000',
   GITHUB_CLIENT_ID: 'id',
   GITHUB_CLIENT_SECRET: 'secret',
+  GOOGLE_CLIENT_ID: 'google-id',
+  GOOGLE_CLIENT_SECRET: 'google-secret',
   TOKEN_ENCRYPTION_KEY: key,
 });
+const googleUser = { id: '1', name: 'Lacko', provider: 'google' as const };
+const signedIn = (): StoredSession => ({
+  user: googleUser,
+  github: {
+    login: 'lacko',
+    encryptedToken: encrypt('token', key),
+    expiresAt: Date.now() + 60000,
+  },
+});
 class MemoryStore implements Store {
-  states = new Set<string>();
+  states = new Map<string, LoginFlow>();
   sessions = new Map<string, StoredSession>();
   async ready() {}
   async close() {}
-  async saveState(value: string) {
-    this.states.add(value);
+  async saveState(state: string, flow: LoginFlow) {
+    this.states.set(state, flow);
   }
-  async consumeState(value: string) {
-    return this.states.delete(value);
+  async consumeState(state: string) {
+    const value = this.states.get(state) ?? null;
+    this.states.delete(state);
+    return value;
+  }
+  async identify(provider: Provider, subject: string, name: string) {
+    return { id: `${provider}:${subject}`, name, provider };
   }
   async saveSession(id: string, value: StoredSession) {
     this.sessions.set(id, value);
@@ -33,195 +55,348 @@ class MemoryStore implements Store {
   async getSession(id: string) {
     return this.sessions.get(id) ?? null;
   }
+  async setGitHub(id: string, value: GitHubConnection | null) {
+    const session = this.sessions.get(id);
+    if (session) session.github = value;
+  }
   async deleteSession(id: string) {
     this.sessions.delete(id);
   }
 }
-
-describe('HTTP application and authentication', () => {
-  let root: string;
+describe('HTTP authentication boundaries', () => {
+  let root: string, store: MemoryStore, github: GitHub, google: Google;
   let app: Awaited<ReturnType<typeof buildApp>>;
-  let store: MemoryStore;
-  let github: GitHub;
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'ai-buddy-'));
     await writeFile(join(root, 'index.html'), '<h1>AI Buddy</h1>');
     store = new MemoryStore();
     github = new GitHub();
-    app = await buildApp({ clientRoot: root, config, store, github });
+    google = new Google();
+    app = await buildApp({ clientRoot: root, config, store, github, google });
   });
   afterEach(async () => {
     await app.close();
     await rm(root, { recursive: true });
     vi.restoreAllMocks();
   });
-  it('serves both subpage URLs directly', async () => {
-    for (const path of [
-      '/pull-requests/review-requests',
-      '/pull-requests/mine',
-    ]) {
-      const result = await app.inject(path);
-      expect(result.statusCode).toBe(200);
-      expect(result.body).toBe('<h1>AI Buddy</h1>');
-    }
-  });
-  it('scopes authored PR requests to the authenticated user', async () => {
-    expect((await app.inject('/api/my-pulls')).statusCode).toBe(401);
-    await store.saveSession('valid', {
-      login: 'lacko',
-      encryptedToken: encrypt('token', key),
-    });
-    vi.spyOn(github, 'inbox').mockResolvedValue({
-      pulls: [],
-      warnings: [],
-      syncedAt: '2026-11-11T10:00:00Z',
-    });
-    const result = await app.inject({
-      url: '/api/my-pulls',
-      cookies: { session: 'valid' },
-    });
-    expect(result.statusCode).toBe(200);
-    expect(github.inbox).toHaveBeenCalledWith('token', 'lacko', 'authored');
-    expect(result.headers['cache-control']).toBe('no-store');
-  });
-  it('checks database readiness and serves the frontend with security headers', async () => {
+  it('provides health, safe error responses and security headers', async () => {
     expect((await app.inject('/healthz')).json()).toEqual({ status: 'ok' });
-    vi.spyOn(store, 'ready').mockRejectedValue(new Error('secret error'));
+    vi.spyOn(store, 'ready').mockRejectedValue(new Error('secret'));
     expect((await app.inject('/healthz')).statusCode).toBe(503);
-    const response = await app.inject('/');
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toBe('<h1>AI Buddy</h1>');
-    expect(response.headers['content-security-policy']).toContain(
+    const login = await app.inject('/login');
+    expect(login.statusCode).toBe(200);
+    expect(login.body).toContain('AI Buddy');
+    expect(login.headers['cache-control']).toBe('no-store');
+    expect(login.headers['content-security-policy']).toContain(
       "frame-ancestors 'none'",
     );
-    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(login.headers['x-content-type-options']).toBe('nosniff');
   });
-  it.each(['/api/missing', '/missing.js'])(
-    'returns 404 for %s',
+  it.each(['/', '/pull-requests/review-requests', '/pull-requests/mine'])(
+    'guards %s and preserves the allowed destination',
     async (path) => {
-      expect((await app.inject(path)).statusCode).toBe(404);
+      const response = await app.inject(path);
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toMatch(/^\/login\?returnTo=/);
+      await store.saveSession('valid', signedIn());
+      expect(
+        (await app.inject({ url: path, cookies: { session: 'valid' } }))
+          .statusCode,
+      ).toBe(200);
     },
   );
-  it('returns an anonymous session and rejects inbox access', async () => {
-    const result = await app.inject('/api/session');
-    expect(result.json()).toEqual({
-      configured: true,
+  it.each(['/api/inbox', '/api/my-pulls'])(
+    'requires a session for %s',
+    async (path) => {
+      expect((await app.inject(path)).statusCode).toBe(401);
+    },
+  );
+  it.each([
+    '/api/missing',
+    '/auth/password',
+    '/auth/email',
+    '/auth/guest',
+    '/missing.js',
+  ])('does not provide another sign-in method at %s', async (path) => {
+    expect((await app.inject(path)).statusCode).toBe(404);
+  });
+  it('reports exactly Google and GitHub availability without exposing tokens', async () => {
+    expect((await app.inject('/api/session')).json()).toEqual({
+      providers: { google: true, github: true },
       user: null,
+      github: { connected: false, login: null },
       installUrl: null,
     });
-    expect(result.headers['cache-control']).toBe('no-store');
-    expect((await app.inject('/api/inbox')).statusCode).toBe(401);
-  });
-  it('authenticates through single-use state, encrypts tokens and rotates sessions', async () => {
-    await store.saveSession('previous', {
-      login: 'old',
-      encryptedToken: 'old',
-    });
-    const start = await app.inject('/auth/github');
-    const location = new URL(start.headers.location!);
-    expect(location.origin).toBe('https://github.com');
-    const state = location.searchParams.get('state')!;
-    expect(start.cookies[0]).toMatchObject({
-      name: 'oauth_state',
-      httpOnly: true,
-      sameSite: 'Lax',
-    });
-    vi.spyOn(github, 'exchange').mockResolvedValue({
-      accessToken: 'private-token',
-      ttl: 3600,
-    });
-    vi.spyOn(github, 'user').mockResolvedValue({ login: 'lacko' });
+    await store.saveSession('valid', signedIn());
     const response = await app.inject({
-      url: `/auth/github/callback?code=code&state=${state}`,
-      cookies: { oauth_state: state, session: 'previous' },
+      url: '/api/session',
+      cookies: { session: 'valid' },
     });
-    expect(response.headers.location).toBe('/');
-    const id = response.cookies.find((c) => c.name === 'session')!.value;
-    expect(await store.getSession('previous')).toBeNull();
-    const saved = await store.getSession(id);
-    expect(saved!.encryptedToken).not.toContain('private-token');
-    expect(decrypt(saved!.encryptedToken, key)).toBe('private-token');
-    expect(
-      (
-        await app.inject({ url: '/api/session', cookies: { session: id } })
-      ).json().user,
-    ).toEqual({ login: 'lacko' });
+    expect(response.json().user).toEqual(googleUser);
+    expect(response.body).not.toContain('encryptedToken');
     expect(
       (
         await app.inject({
-          url: `/auth/github/callback?code=code&state=${state}`,
-          cookies: { oauth_state: state },
+          url: '/login?returnTo=https://evil.example',
+          cookies: { session: 'valid' },
         })
       ).headers.location,
-    ).toBe('/?auth=failed');
+    ).toBe('/pull-requests/review-requests');
+    expect(
+      (
+        await app.inject({
+          url: '/login?returnTo=/pull-requests/mine',
+          cookies: { session: 'valid' },
+        })
+      ).headers.location,
+    ).toBe('/pull-requests/mine');
   });
-  it.each(['', '?error=access_denied', '?code=x', '?code=x&state=wrong'])(
-    'rejects invalid callbacks %s',
-    async (query) => {
+  it.each(['google', 'github'] as const)(
+    'authenticates %s with PKCE, state, rotation and stable identity',
+    async (provider) => {
+      await store.saveSession('previous', signedIn());
+      const start = await app.inject(
+        `/auth/${provider}?returnTo=/pull-requests/mine`,
+      );
+      const url = new URL(start.headers.location!);
+      const state = url.searchParams.get('state')!;
+      const flow = store.states.get(state)!;
+      expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+      expect(url.searchParams.get('code_challenge')).toHaveLength(43);
+      expect(start.cookies[0]).toMatchObject({
+        name: `oauth_${provider}`,
+        httpOnly: true,
+        sameSite: 'Lax',
+      });
+      vi.spyOn(github, 'exchange').mockResolvedValue({
+        accessToken: 'private-token',
+        ttl: 3600,
+      });
+      vi.spyOn(github, 'user').mockResolvedValue({
+        id: 42,
+        login: 'lacko',
+        name: 'Lacko',
+      });
+      vi.spyOn(google, 'login').mockResolvedValue({
+        subject: 'google-sub',
+        name: 'Lacko',
+      });
+      const response = await app.inject({
+        url: `/auth/${provider}/callback?code=code&state=${state}`,
+        cookies: { [`oauth_${provider}`]: state, session: 'previous' },
+      });
+      expect(response.headers.location).toBe('/pull-requests/mine');
+      const id = response.cookies.find((c) => c.name === 'session')!.value;
+      expect(id).not.toBe('previous');
+      expect(await store.getSession('previous')).toBeNull();
+      const value = (await store.getSession(id))!;
+      expect(value.user.provider).toBe(provider);
+      if (provider === 'google') {
+        expect(url.searchParams.get('scope')).toBe('openid profile');
+        expect(url.searchParams.get('nonce')).toBe(flow.nonce);
+        expect(value.github).toBeNull();
+        expect(google.login).toHaveBeenCalledWith(
+          'code',
+          config.googleClientId,
+          config.googleClientSecret,
+          `${config.appUrl}/auth/google/callback`,
+          flow.verifier,
+          flow.nonce,
+        );
+      } else {
+        expect(value.user.id).toBe('github:42');
+        expect(decrypt(value.github!.encryptedToken, key)).toBe(
+          'private-token',
+        );
+        expect(github.exchange).toHaveBeenCalledWith(
+          'code',
+          config.clientId,
+          config.clientSecret,
+          `${config.appUrl}/auth/github/callback`,
+          flow.verifier,
+        );
+      }
       expect(
-        (await app.inject(`/auth/github/callback${query}`)).headers.location,
-      ).toBe('/?auth=failed');
+        (
+          await app.inject({
+            url: `/auth/${provider}/callback?code=code&state=${state}`,
+            cookies: { [`oauth_${provider}`]: state },
+          })
+        ).headers.location,
+      ).toBe('/login?auth=failed');
     },
   );
-  it('handles failed token exchange without leaking details', async () => {
-    await store.saveState('valid');
-    vi.spyOn(github, 'exchange').mockRejectedValue(new Error('secret token'));
+  it('connects GitHub to a Google identity without replacing that identity', async () => {
+    await store.saveSession('google-session', {
+      user: googleUser,
+      github: null,
+    });
+    const start = await app.inject({
+      url: '/auth/github?intent=connect',
+      cookies: { session: 'google-session' },
+    });
+    const state = new URL(start.headers.location!).searchParams.get('state')!;
+    expect(store.states.get(state)!.sessionHash).toBe(
+      hashToken('google-session'),
+    );
+    vi.spyOn(github, 'exchange').mockResolvedValue({
+      accessToken: 'token',
+      ttl: 3600,
+    });
+    vi.spyOn(github, 'user').mockResolvedValue({ id: 42, login: 'lacko' });
     const response = await app.inject({
-      url: '/auth/github/callback?code=x&state=valid',
-      cookies: { oauth_state: 'valid' },
+      url: `/auth/github/callback?state=${state}&code=x`,
+      cookies: { session: 'google-session', oauth_github: state },
     });
-    expect(response.headers.location).toBe('/?auth=failed');
-    expect(response.body).not.toContain('secret');
+    const id = response.cookies.find((c) => c.name === 'session')!.value;
+    expect((await store.getSession(id))!.user).toEqual(googleUser);
+    expect((await store.getSession(id))!.github!.login).toBe('lacko');
   });
-  it('returns inbox data only for the authenticated user', async () => {
-    await store.saveSession('valid', {
-      login: 'lacko',
-      encryptedToken: encrypt('token', key),
+  it('rejects connection callbacks from another session or after logout', async () => {
+    expect(
+      (await app.inject('/auth/github?intent=connect')).headers.location,
+    ).toBe('/login');
+    for (const oldId of ['other', '']) {
+      await store.saveSession('original', { user: googleUser, github: null });
+      const start = await app.inject({
+        url: '/auth/github?intent=connect',
+        cookies: { session: 'original' },
+      });
+      const state = new URL(start.headers.location!).searchParams.get('state')!;
+      await store.saveSession('other', signedIn());
+      expect(
+        (
+          await app.inject({
+            url: `/auth/github/callback?state=${state}&code=x`,
+            cookies: { session: oldId, oauth_github: state },
+          })
+        ).headers.location,
+      ).toBe('/login?auth=failed');
+    }
+  });
+  it.each(['google', 'github'] as const)(
+    'rejects invalid/cancelled/cross-provider %s callbacks',
+    async (provider) => {
+      for (const query of [
+        '',
+        '?error=access_denied',
+        '?code=x',
+        '?code=x&state=wrong',
+      ])
+        expect(
+          (await app.inject(`/auth/${provider}/callback${query}`)).headers
+            .location,
+        ).toBe('/login?auth=failed');
+      const state = 'cross';
+      await store.saveState(state, {
+        provider: provider === 'google' ? 'github' : 'google',
+        verifier: 'v',
+        nonce: 'n',
+        returnTo: '/',
+        sessionHash: null,
+      });
+      expect(
+        (
+          await app.inject({
+            url: `/auth/${provider}/callback?code=x&state=${state}`,
+            cookies: { [`oauth_${provider}`]: state },
+          })
+        ).headers.location,
+      ).toBe('/login?auth=failed');
+    },
+  );
+  it.each(['google', 'github'] as const)(
+    'handles %s provider failure without leaking secrets',
+    async (provider) => {
+      const start = await app.inject(
+        `/auth/${provider}?returnTo=//evil.example`,
+      );
+      const state = new URL(start.headers.location!).searchParams.get('state')!;
+      vi.spyOn(github, 'exchange').mockRejectedValue(new Error('secret'));
+      vi.spyOn(google, 'login').mockRejectedValue(new Error('secret'));
+      const result = await app.inject({
+        url: `/auth/${provider}/callback?code=x&state=${state}`,
+        cookies: { [`oauth_${provider}`]: state },
+      });
+      expect(result.headers.location).toBe('/login?auth=failed');
+      expect(result.body).not.toContain('secret');
+    },
+  );
+  it('keeps a Google session after a failed GitHub connection', async () => {
+    await store.saveSession('valid', { user: googleUser, github: null });
+    const start = await app.inject({
+      url: '/auth/github?intent=connect',
+      cookies: { session: 'valid' },
     });
-    const data = { pulls: [], warnings: [], syncedAt: '2026-11-11T10:00:00Z' };
-    vi.spyOn(github, 'inbox').mockResolvedValue(data);
+    const state = new URL(start.headers.location!).searchParams.get('state')!;
+    vi.spyOn(github, 'exchange').mockRejectedValue(new Error('secret'));
+    expect(
+      (
+        await app.inject({
+          url: `/auth/github/callback?code=x&state=${state}`,
+          cookies: { oauth_github: state, session: 'valid' },
+        })
+      ).headers.location,
+    ).toBe('/pull-requests/review-requests?connection=failed');
+    expect(await store.getSession('valid')).not.toBeNull();
+  });
+  it.each([
+    ['/api/inbox', 'reviews'],
+    ['/api/my-pulls', 'authored'],
+  ] as const)(
+    'scopes %s to the connected GitHub account',
+    async (path, mode) => {
+      await store.saveSession('valid', signedIn());
+      vi.spyOn(github, 'inbox').mockResolvedValue({
+        pulls: [],
+        warnings: [],
+        syncedAt: 'now',
+      });
+      expect(
+        (await app.inject({ url: path, cookies: { session: 'valid' } }))
+          .statusCode,
+      ).toBe(200);
+      expect(github.inbox).toHaveBeenCalledWith('token', 'lacko', mode);
+    },
+  );
+  it('requires a live GitHub connection even for authenticated Google users', async () => {
+    await store.saveSession('valid', { user: googleUser, github: null });
     expect(
       (
         await app.inject({ url: '/api/inbox', cookies: { session: 'valid' } })
       ).json(),
-    ).toEqual(data);
-    expect(github.inbox).toHaveBeenCalledWith('token', 'lacko', 'reviews');
+    ).toEqual({ error: 'github_connection_required' });
+    const expired = signedIn();
+    expired.github!.expiresAt = 0;
+    await store.saveSession('valid', expired);
+    expect(
+      (
+        await app.inject({ url: '/api/session', cookies: { session: 'valid' } })
+      ).json().github.connected,
+    ).toBe(false);
+    expect(
+      (await app.inject({ url: '/api/inbox', cookies: { session: 'valid' } }))
+        .statusCode,
+    ).toBe(403);
   });
   it.each([
     ['github_unauthorized', 401],
     ['rate_limited', 429],
     ['github_permissions', 403],
     ['github_unavailable', 502],
-  ] as const)('maps %s errors', async (code, status) => {
-    await store.saveSession('valid', {
-      login: 'lacko',
-      encryptedToken: encrypt('token', key),
-    });
+  ] as const)('maps %s and preserves app identity', async (code, status) => {
+    await store.saveSession('valid', signedIn());
     vi.spyOn(github, 'inbox').mockRejectedValue(new GitHubError(status, code));
-    const response = await app.inject({
-      url: '/api/inbox',
-      cookies: { session: 'valid' },
-    });
-    expect(response.statusCode).toBe(status);
-    expect(response.json()).toEqual({ error: code });
-    if (status === 401) expect(await store.getSession('valid')).toBeNull();
+    expect(
+      (await app.inject({ url: '/api/inbox', cookies: { session: 'valid' } }))
+        .statusCode,
+    ).toBe(status);
+    expect((await store.getSession('valid'))!.user).toEqual(googleUser);
+    if (code === 'github_unauthorized')
+      expect((await store.getSession('valid'))!.github).toBeNull();
   });
-  it('hides internal failures', async () => {
-    vi.spyOn(store, 'getSession').mockRejectedValue(
-      new Error('database secret'),
-    );
-    const response = await app.inject({
-      url: '/api/session',
-      cookies: { session: 'valid' },
-    });
-    expect(response.statusCode).toBe(503);
-    expect(response.json()).toEqual({ error: 'service_unavailable' });
-  });
-  it('protects logout from cross-site requests and invalidates the session', async () => {
-    await store.saveSession('valid', {
-      login: 'lacko',
-      encryptedToken: 'token',
-    });
+  it('protects logout and deletes the complete session', async () => {
+    await store.saveSession('valid', signedIn());
     expect(
       (
         await app.inject({
@@ -232,13 +407,13 @@ describe('HTTP application and authentication', () => {
         })
       ).statusCode,
     ).toBe(403);
-    const response = await app.inject({
+    const result = await app.inject({
       method: 'POST',
       url: '/api/logout',
       headers: { origin: config.appUrl },
       cookies: { session: 'valid' },
     });
-    expect(response.json()).toEqual({ ok: true });
+    expect(result.statusCode).toBe(200);
     expect(await store.getSession('valid')).toBeNull();
     expect(
       (
@@ -250,24 +425,46 @@ describe('HTTP application and authentication', () => {
       ).statusCode,
     ).toBe(200);
   });
-  it('allows a workspace without configured GitHub credentials', async () => {
+  it('handles unavailable providers and internal failures safely', async () => {
     await app.close();
     app = await buildApp({ clientRoot: root, store, config: readConfig({}) });
-    expect((await app.inject('/auth/github')).statusCode).toBe(503);
-    expect((await app.inject('/api/session')).json().configured).toBe(false);
+    for (const provider of ['google', 'github'])
+      expect((await app.inject(`/auth/${provider}`)).headers.location).toBe(
+        '/login?auth=unavailable',
+      );
+    vi.spyOn(store, 'getSession').mockRejectedValue(
+      new Error('database-secret'),
+    );
+    expect(
+      (
+        await app.inject({ url: '/api/session', cookies: { session: 'valid' } })
+      ).json(),
+    ).toEqual({ error: 'service_unavailable' });
   });
-  it('sets Secure cookies on HTTPS deployments', async () => {
+  it('uses secure cookies in HTTPS deployments', async () => {
     await app.close();
     app = await buildApp({
       clientRoot: root,
       store,
-      config: { ...config, secure: true, appUrl: 'https://review.example' },
+      config: { ...config, secure: true, appUrl: 'https://buddy.example' },
     });
-    expect((await app.inject('/auth/github')).cookies[0].secure).toBe(true);
+    expect((await app.inject('/auth/google')).cookies[0].secure).toBe(true);
   });
 });
 
 describe('configuration and cryptography', () => {
+  it.each([
+    { GOOGLE_CLIENT_ID: 'id' },
+    { GOOGLE_CLIENT_SECRET: 'secret' },
+    {
+      GOOGLE_CLIENT_ID: 'id',
+      GOOGLE_CLIENT_SECRET: 'secret',
+      TOKEN_ENCRYPTION_KEY: 'bad',
+    },
+  ])('rejects invalid Google provider configuration %j', (env) => {
+    expect(() => readConfig(env)).toThrow();
+  });
+
   it('uses defaults and accepts deployment values', () => {
     expect(readPort(undefined)).toBe(3001);
     expect(readConfig({}).configured).toBe(false);
