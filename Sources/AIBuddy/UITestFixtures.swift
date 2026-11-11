@@ -20,10 +20,14 @@ private actor FixtureCredentials: CredentialStoring {
 }
 private struct FixtureGitHub: GitHubServing {
     let scenario: String
-    func user(token: String) async throws -> GitHubUser { GitHubUser(id: 1, login: "local-developer") }
+    func user(token: String) async throws -> GitHubUser {
+        if scenario == "expired" { throw BuddyError.unauthorized }
+        return GitHubUser(id: 1, login: "local-developer")
+    }
     func inbox(token: String, login: String, page: PRPage) async throws -> Inbox {
-        if scenario == "error" { throw BuddyError.permissions }
+        if scenario == "error" || (scenario == "reviews-restricted" && page == .reviews) { throw BuddyError.permissions }
         if scenario == "empty" { return Inbox(pulls: []) }
+        if scenario == "partial-empty" { return Inbox(pulls: [], accessIssues: [.teamMembership]) }
         let titles = page == .reviews ? ["Improve GitHub synchronization", "Update local storage", "Fix review request timing"] : ["My native macOS feature"]
         let pulls = titles.enumerated().map { index, title in
             PullRequest(id: Int64(index + 1), number: index + 10, title: title,
@@ -32,7 +36,7 @@ private struct FixtureGitHub: GitHubServing {
                         group: page == .reviews ? ReviewGroup.allCases[index] : nil,
                         personal: page == .reviews, changedSinceReview: index == 2)
         }
-        return Inbox(pulls: pulls, warnings: scenario == "partial" ? ["Team membership is unavailable. Team requests may be missing."] : [])
+        return Inbox(pulls: pulls, accessIssues: scenario == "partial" ? [.teamMembership, .repository("example/private#42")] : [])
     }
 }
 private struct FixtureAuthorization: GitHubAuthorization {

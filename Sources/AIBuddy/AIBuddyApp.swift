@@ -17,7 +17,8 @@ struct AIBuddyApp: App {
         _workspace = StateObject(wrappedValue: Workspace(
             configured: !id.isEmpty && !id.contains("$("), github: GitHubClient(),
             authorization: DeviceAuthorization(clientID: id), credentials: KeychainCredentialStore(),
-            cache: SQLiteInboxStore(path: SQLiteInboxStore.applicationPath)))
+            cache: SQLiteInboxStore(path: SQLiteInboxStore.applicationPath),
+            applicationSettingsURL: GitHubAccessHelp.settingsURL(clientID: id)))
     }
     var body: some Scene {
         WindowGroup {

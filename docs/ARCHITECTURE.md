@@ -23,3 +23,9 @@ The checked-in Xcode project consumes the local BuddyCore package. `scripts/gene
 The ARM64 macOS CI runs core tests, isolated UI tests, and a Release app build. UI fixtures are DEBUG-only and never touch production Keychain or disk. Initial distribution is a local unsigned/ad-hoc `.app`; Developer ID signing, notarization, DMG and updating are deferred. There is no migration of web sessions or PostgreSQL data; old data is left untouched.
 
 AI execution, provider setup, agent processes, review settings/results/posting, Enterprise and concurrent accounts are outside this version. Later tools can reuse connections and storage through explicit services; no plugin framework is introduced now.
+
+## Access recovery
+
+A rejected token gates both GitHub pages with `needsReconnection`; permission failures gate only the affected page. In-flight refreshes are invalidated when authorization is rejected or reauthorization begins. Reauthorization replaces the old credential and snapshots only after approval; cancellation/denial keeps the old connection available when it was still valid. A successful retry clears a page's restriction. Network and rate-limit failures retain their ordinary retry/stale-data behavior.
+
+Partial permission failures are typed `GitHubAccessIssue` values in the Inbox, separate from general warnings; remaining PRs are shown with a compact help entry point. Older SQLite snapshots decode with no access metadata, so no cache migration is required. The UI links to the configured OAuth app's GitHub authorization settings, falling back to Applications when the public client ID is absent. No setup screen asks end users to register an OAuth app, enter passwords or paste personal tokens.

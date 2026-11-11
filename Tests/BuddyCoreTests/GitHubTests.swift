@@ -61,7 +61,7 @@ struct GitHubTests {
             }
         }
         let result = try await GitHubClient(transport: http).inbox(token: "t", login: "lacko", page: .reviews)
-        #expect(result.pulls.count == 1); #expect(result.warnings.count == 1)
+        #expect(result.pulls.count == 1); #expect(result.accessIssues == [.teamMembership])
     }
     @Test func inaccessibleRepositoryIsPartialResult() async throws {
         let http = MockHTTP { request, _ in
@@ -71,7 +71,7 @@ struct GitHubTests {
             return json("{}", status: 404)
         }
         let result = try await GitHubClient(transport: http).inbox(token: "t", login: "lacko", page: .authored)
-        #expect(result.pulls.isEmpty); #expect(result.warnings.count == 1)
+        #expect(result.pulls.isEmpty); #expect(result.accessIssues == [.repository("acme/api#10")])
     }
     @Test(arguments: [(401, BuddyError.unauthorized), (403, .permissions), (429, .rateLimited), (500, .unavailable), (302, .unavailable)])
     func errors(status: Int, expected: BuddyError) async {
