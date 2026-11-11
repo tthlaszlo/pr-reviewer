@@ -146,29 +146,41 @@ export async function buildApp(options: {
       await store.deleteSession(request.cookies.session);
     return reply.clearCookie('session', cookieOptions).send({ ok: true });
   });
-  app.get(
-    '/api/inbox',
-    { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
-    async (request, reply) => {
-      const user = await session(request.cookies.session);
-      if (!user) return reply.code(401).send({ error: 'unauthenticated' });
-      try {
-        return await github.inbox(
-          decrypt(user.encryptedToken, config.encryptionKey),
-          user.login,
-        );
-      } catch (error) {
-        if (
-          error instanceof GitHubError &&
-          error.code === 'github_unauthorized'
-        ) {
-          await store.deleteSession(request.cookies.session!);
-          reply.clearCookie('session', cookieOptions);
+  for (const [path, mode] of [
+    ['/api/inbox', 'reviews'],
+    ['/api/my-pulls', 'authored'],
+  ] as const) {
+    app.get(
+      path,
+      { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+      async (request, reply) => {
+        const user = await session(request.cookies.session);
+        if (!user) return reply.code(401).send({ error: 'unauthenticated' });
+        try {
+          return await github.inbox(
+            decrypt(user.encryptedToken, config.encryptionKey),
+            user.login,
+            mode,
+          );
+        } catch (error) {
+          if (
+            error instanceof GitHubError &&
+            error.code === 'github_unauthorized'
+          ) {
+            await store.deleteSession(request.cookies.session!);
+            reply.clearCookie('session', cookieOptions);
+          }
+          throw error;
         }
-        throw error;
-      }
-    },
-  );
+      },
+    );
+  }
   await app.register(fastifyStatic, { root: clientRoot });
+  for (const path of [
+    '/pull-requests/review-requests',
+    '/pull-requests/mine',
+  ]) {
+    app.get(path, (_request, reply) => reply.sendFile('index.html'));
+  }
   return app;
 }

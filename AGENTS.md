@@ -40,6 +40,8 @@
 - A termék célja a PR-reviewk részleges automatizálása.
 - A PR-lista a felhasználónak személyesen, illetve a csapatain keresztül érkező review-kéréseket fogja össze.
 - A kért csoportok: még nem adott reviewt; már adott reviewt és a PR várakozik; újra meghívták reviewra.
-- A review részletes működését és beállításait, az AI-agenteket, az eredményoldalt és a GitHubra posztolást később tervezzük és valósítjuk meg. Ezekhez egyelőre csak placeholder szükséges.
+- A review részletes működését és beállításait, az AI-agenteket, az eredményoldalt és a GitHubra posztolást később tervezzük és valósítjuk meg. Ezekhez egyelőre ne jelenjen meg külön menüpont.
 - A későbbi cél a saját Claude- vagy ChatGPT-előfizetések használata specialist agentekkel; az integráció részletei még nincsenek véglegesítve.
 - A korábbi technológiai és GitHub-bejelentkezési javaslatokat ne kezeld automatikusan végleges döntésként.
+
+- A Pull requests oldal két aloldala: a személyes/csapatos review-kérések és a felhasználó saját nyitott PR-jei. A három review-csoport az első aloldalon marad.

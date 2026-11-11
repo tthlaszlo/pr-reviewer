@@ -8,7 +8,7 @@ export type PullRequest = {
   author: string;
   updatedAt: string;
   draft: boolean;
-  group: Group;
+  group: Group | null;
   personal: boolean;
   teams: string[];
   reviewState: string | null;

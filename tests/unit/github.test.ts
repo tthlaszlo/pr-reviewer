@@ -145,6 +145,49 @@ describe('review classification', () => {
 });
 
 describe('GitHub integration', () => {
+  it('finds only my open PRs without fetching team membership or review history', async () => {
+    const fetcher = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input);
+      if (url.includes('/search/issues')) {
+        expect(decodeURIComponent(url)).toContain('is:pr is:open author:lacko');
+        return json({
+          total_count: 3,
+          incomplete_results: false,
+          items: [1, 2, 3].map((number) => ({
+            repository_url: 'https://api.github.com/repos/acme/api',
+            number,
+          })),
+        });
+      }
+      const number = Number(url.split('/').at(-1));
+      return json({
+        ...pull,
+        id: number,
+        number,
+        user: { login: number === 2 ? 'other' : 'LACKO' },
+        state: number === 3 ? 'closed' : 'open',
+      });
+    });
+    const result = await new GitHub(fetcher).inbox(
+      'token',
+      'lacko',
+      'authored',
+    );
+    expect(result.pulls).toHaveLength(1);
+    expect(result.pulls[0]).toMatchObject({
+      id: 1,
+      author: 'LACKO',
+      group: null,
+      teams: [],
+      personal: false,
+    });
+    expect(
+      fetcher.mock.calls.some(([url]) =>
+        /user\/teams|reviews|timeline/.test(String(url)),
+      ),
+    ).toBe(false);
+  });
+
   it('exchanges codes, caps session duration and fetches user identity', async () => {
     const fetcher = vi
       .fn<typeof fetch>()

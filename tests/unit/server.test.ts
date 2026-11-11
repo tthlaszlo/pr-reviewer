@@ -55,6 +55,35 @@ describe('HTTP application and authentication', () => {
     await rm(root, { recursive: true });
     vi.restoreAllMocks();
   });
+  it('serves both subpage URLs directly', async () => {
+    for (const path of [
+      '/pull-requests/review-requests',
+      '/pull-requests/mine',
+    ]) {
+      const result = await app.inject(path);
+      expect(result.statusCode).toBe(200);
+      expect(result.body).toBe('<h1>PR Reviewer</h1>');
+    }
+  });
+  it('scopes authored PR requests to the authenticated user', async () => {
+    expect((await app.inject('/api/my-pulls')).statusCode).toBe(401);
+    await store.saveSession('valid', {
+      login: 'lacko',
+      encryptedToken: encrypt('token', key),
+    });
+    vi.spyOn(github, 'inbox').mockResolvedValue({
+      pulls: [],
+      warnings: [],
+      syncedAt: '2026-11-11T10:00:00Z',
+    });
+    const result = await app.inject({
+      url: '/api/my-pulls',
+      cookies: { session: 'valid' },
+    });
+    expect(result.statusCode).toBe(200);
+    expect(github.inbox).toHaveBeenCalledWith('token', 'lacko', 'authored');
+    expect(result.headers['cache-control']).toBe('no-store');
+  });
   it('checks database readiness and serves the frontend with security headers', async () => {
     expect((await app.inject('/healthz')).json()).toEqual({ status: 'ok' });
     vi.spyOn(store, 'ready').mockRejectedValue(new Error('secret error'));
@@ -156,7 +185,7 @@ describe('HTTP application and authentication', () => {
         await app.inject({ url: '/api/inbox', cookies: { session: 'valid' } })
       ).json(),
     ).toEqual(data);
-    expect(github.inbox).toHaveBeenCalledWith('token', 'lacko');
+    expect(github.inbox).toHaveBeenCalledWith('token', 'lacko', 'reviews');
   });
   it.each([
     ['github_unauthorized', 401],

@@ -70,6 +70,8 @@ A navigációban a halvány kiemelési háttér jelzi az aktív helyet. Az alkal
 
 ## PR-lista és csoportok
 
+A Pull requests navigáció két aloldala: **Review requests** (személyes és csapatos review-kérések), illetve **My pull requests** (a felhasználó saját nyitott PR-jei). Mindkettő külön URL-lel és aktív navigációs jelöléssel rendelkezik. A három review-csoport csak a Review requests aloldalon jelenik meg. A Publishing, Results, AI agents és Review settings menüpontok nem jelennek meg.
+
 A három kért csoport:
 
 1. Még nem reviewztam.
@@ -101,7 +103,7 @@ A sorok között finom elválasztók legyenek. Kerüljük a különálló, nagy 
 | Ikon | Egységes, vonalas ikoncsalád, jellemzően 16 px; a mintában Lucide |
 | Placeholder | Őszinte leírás a későbbi funkcióról; működést nem színlelő vezérlők |
 
-A képernyőnkénti műveletek számát a tényleges feladat indokolja. Az aktuális hatókörön kívüli review-beállításokat, agenteket, eredményeket és posztolást csak placeholder képviselje, amíg a felhasználó másként nem rendelkezik.
+A képernyőnkénti műveletek számát a tényleges feladat indokolja. Az aktuális hatókörön kívüli review-beállításokat, agenteket, eredményeket és posztolást ne jelenítsük meg a navigációban; ezek későbbi funkciók.
 
 ## Állapotok
 

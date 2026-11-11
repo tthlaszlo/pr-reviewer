@@ -2,7 +2,7 @@
 
 A focused inbox for GitHub pull request reviews. Personal and team requests are grouped into **Awaiting my review**, **Reviewed · waiting**, and **Review requested again**. The interface follows the [Focus design system](docs/DESIGN_SYSTEM.md).
 
-Review configuration, AI agents, results, and publishing are explicitly placeholders. This version never runs an AI review or posts to GitHub.
+The Pull requests navigation contains two subpages: **Review requests** (`/pull-requests/review-requests`) and **My pull requests** (`/pull-requests/mine`). The latter lists open PRs authored by the signed-in user, independently of review invitations. Review configuration, AI agents, results, and publishing have no menu entries. This version never runs an AI review or posts to GitHub.
 
 ## Local development
 

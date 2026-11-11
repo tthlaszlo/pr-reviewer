@@ -1,11 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   GitPullRequest,
   Inbox as InboxIcon,
-  Bot,
-  ClipboardCheck,
-  Send,
-  Settings2,
+  UserRound,
   RefreshCw,
   GitBranch as Github,
   ExternalLink,
@@ -17,38 +14,23 @@ import type { Group, Inbox, Session } from '../shared/types';
 
 const sections = {
   inbox: {
-    label: 'Pull requests',
+    label: 'Review requests',
     icon: InboxIcon,
+    path: '/pull-requests/review-requests',
     title: 'Your review inbox',
     description: 'Personal and team review requests, in one place.',
   },
-  review: {
-    label: 'Review settings',
-    icon: Settings2,
-    title: 'Review settings',
-    description: 'Review options and configuration will be available here.',
-  },
-  agents: {
-    label: 'AI agents',
-    icon: Bot,
-    title: 'AI agents',
-    description:
-      'Provider connections and specialist agent profiles will be available here.',
-  },
-  results: {
-    label: 'Results',
-    icon: ClipboardCheck,
-    title: 'Review results',
-    description: 'Findings and review summaries will be available here.',
-  },
-  publishing: {
-    label: 'Publishing',
-    icon: Send,
-    title: 'Publish a review',
-    description:
-      'Editing and posting reviews to GitHub will be available here.',
+  mine: {
+    label: 'My pull requests',
+    icon: UserRound,
+    path: '/pull-requests/mine',
+    title: 'My pull requests',
+    description: 'Your open pull requests across accessible repositories.',
   },
 } as const;
+type Page = keyof typeof sections;
+const pageFromPath = (): Page =>
+  window.location.pathname === sections.mine.path ? 'mine' : 'inbox';
 const groups: { id: Group; label: string }[] = [
   { id: 'awaiting', label: 'Awaiting my review' },
   { id: 'waiting', label: 'Reviewed · waiting' },
@@ -74,7 +56,7 @@ async function api<T>(path: string, method = 'GET'): Promise<T> {
   return response.json() as Promise<T>;
 }
 export function App() {
-  const [section, setSection] = useState<keyof typeof sections>('inbox');
+  const [section, setSection] = useState<Page>(pageFromPath);
   const [group, setGroup] = useState<Group>('awaiting');
   const [session, setSession] = useState<Session | null>(null);
   const [inbox, setInbox] = useState<Inbox | null>(null);
@@ -83,27 +65,51 @@ export function App() {
   const [filter, setFilter] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
   const current = sections[section];
-  async function load() {
+  const requestId = useRef(0);
+  function changePage(page: Page) {
+    if (page === section) return;
+    requestId.current++;
+    setInbox(null);
+    setLoading(true);
+    setSection(page);
+  }
+  async function load(page: Page = section) {
+    const id = ++requestId.current;
     setLoading(true);
     setError('');
     try {
       const value = await api<Session>('/api/session');
+      if (id !== requestId.current) return;
       setSession(value);
-      if (value.user) setInbox(await api<Inbox>('/api/inbox'));
-      else setInbox(null);
+      const data = value.user
+        ? await api<Inbox>(page === 'mine' ? '/api/my-pulls' : '/api/inbox')
+        : null;
+      if (id === requestId.current) setInbox(data);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'service_unavailable');
+      if (id === requestId.current)
+        setError(
+          cause instanceof Error ? cause.message : 'service_unavailable',
+        );
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   }
   useEffect(() => {
-    void load();
-  }, []);
+    const onPopState = () => changePage(pageFromPath());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [section]);
+  useEffect(() => {
+    setInbox(null);
+    setFilter('');
+    void load(section);
+  }, [section]);
   async function logout() {
     setLoggingOut(true);
     try {
       await api('/api/logout', 'POST');
+      requestId.current++;
+      setLoading(false);
       setSession((value) => (value ? { ...value, user: null } : value));
       setInbox(null);
       setError('');
@@ -116,7 +122,7 @@ export function App() {
   const rows =
     inbox?.pulls.filter(
       (pr) =>
-        pr.group === group &&
+        (section === 'mine' || pr.group === group) &&
         `${pr.title} ${pr.repository} ${pr.author} #${pr.number}`
           .toLowerCase()
           .includes(filter.toLowerCase()),
@@ -132,17 +138,34 @@ export function App() {
         </a>
         <div className="workspace-label">WORKSPACE</div>
         <nav aria-label="Main navigation">
+          <div className="nav-parent">
+            <GitPullRequest size={16} />
+            Pull requests
+          </div>
           {Object.entries(sections).map(([key, value]) => {
             const Icon = value.icon;
             return (
-              <button
+              <a
                 key={key}
+                href={value.path}
                 aria-current={section === key ? 'page' : undefined}
-                onClick={() => setSection(key as keyof typeof sections)}
+                onClick={(event) => {
+                  if (
+                    event.button !== 0 ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  )
+                    return;
+                  event.preventDefault();
+                  window.history.pushState({}, '', value.path);
+                  changePage(key as Page);
+                }}
               >
                 <Icon size={16} />
                 {value.label}
-              </button>
+              </a>
             );
           })}
         </nav>
@@ -170,14 +193,14 @@ export function App() {
       </aside>
       <main>
         <div className="breadcrumb">
-          Workspace <span>/</span> {current.label}
+          Pull requests <span>/</span> {current.label}
         </div>
         <header>
           <div>
-            <h1>{current.title}</h1>
+            <h1 id="page-title">{current.title}</h1>
             <p className="intro">{current.description}</p>
           </div>
-          {section === 'inbox' && (
+          {
             <button
               className="secondary"
               disabled={loading || !session?.user}
@@ -186,56 +209,61 @@ export function App() {
               <RefreshCw size={15} className={loading ? 'spinning' : ''} />
               Refresh
             </button>
-          )}
+          }
         </header>
-        {section === 'inbox' ? (
+        {
           <>
-            <div
-              className="tabs"
-              role="tablist"
-              aria-label="Review request groups"
-            >
-              {groups.map((item) => (
-                <button
-                  key={item.id}
-                  id={`tab-${item.id}`}
-                  role="tab"
-                  aria-selected={group === item.id}
-                  aria-controls="pull-list"
-                  tabIndex={group === item.id ? 0 : -1}
-                  onKeyDown={(event) => {
-                    const index = groups.findIndex(
-                      (entry) => entry.id === item.id,
-                    );
-                    const next =
-                      event.key === 'ArrowRight'
-                        ? (index + 1) % groups.length
-                        : event.key === 'ArrowLeft'
-                          ? (index + groups.length - 1) % groups.length
-                          : event.key === 'Home'
-                            ? 0
-                            : event.key === 'End'
-                              ? groups.length - 1
-                              : null;
-                    if (next === null) return;
-                    event.preventDefault();
-                    setGroup(groups[next].id);
-                    document.getElementById(`tab-${groups[next].id}`)?.focus();
-                  }}
-                  onClick={() => setGroup(item.id)}
-                >
-                  {item.label}
-                  <span className="count">
-                    {inbox
-                      ? inbox.pulls.filter((pr) => pr.group === item.id).length
-                      : '—'}
-                  </span>
-                  <span className="sr-only">
-                    {group === item.id ? ' (selected)' : ''}
-                  </span>
-                </button>
-              ))}
-            </div>
+            {section === 'inbox' && (
+              <div
+                className="tabs"
+                role="tablist"
+                aria-label="Review request groups"
+              >
+                {groups.map((item) => (
+                  <button
+                    key={item.id}
+                    id={`tab-${item.id}`}
+                    role="tab"
+                    aria-selected={group === item.id}
+                    aria-controls="pull-list"
+                    tabIndex={group === item.id ? 0 : -1}
+                    onKeyDown={(event) => {
+                      const index = groups.findIndex(
+                        (entry) => entry.id === item.id,
+                      );
+                      const next =
+                        event.key === 'ArrowRight'
+                          ? (index + 1) % groups.length
+                          : event.key === 'ArrowLeft'
+                            ? (index + groups.length - 1) % groups.length
+                            : event.key === 'Home'
+                              ? 0
+                              : event.key === 'End'
+                                ? groups.length - 1
+                                : null;
+                      if (next === null) return;
+                      event.preventDefault();
+                      setGroup(groups[next].id);
+                      document
+                        .getElementById(`tab-${groups[next].id}`)
+                        ?.focus();
+                    }}
+                    onClick={() => setGroup(item.id)}
+                  >
+                    {item.label}
+                    <span className="count">
+                      {inbox
+                        ? inbox.pulls.filter((pr) => pr.group === item.id)
+                            .length
+                        : '—'}
+                    </span>
+                    <span className="sr-only">
+                      {group === item.id ? ' (selected)' : ''}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="filter-bar">
               <label className="search">
                 <Search size={16} />
@@ -246,7 +274,11 @@ export function App() {
                   onChange={(event) => setFilter(event.target.value)}
                 />
               </label>
-              <span className="muted">Personal & team requests</span>
+              <span className="muted">
+                {section === 'mine'
+                  ? 'Authored by you'
+                  : 'Personal & team requests'}
+              </span>
             </div>
             {error && (
               <div role="alert" className="notice">
@@ -282,24 +314,32 @@ export function App() {
             ))}
             <section
               id="pull-list"
-              role="tabpanel"
-              aria-labelledby={`tab-${group}`}
+              role={section === 'inbox' ? 'tabpanel' : 'region'}
+              aria-labelledby={
+                section === 'inbox' ? `tab-${group}` : 'page-title'
+              }
               aria-busy={loading}
             >
               {loading ? (
                 <div className="empty" role="status">
                   <RefreshCw className="spinning" size={24} />
                   <h2>Loading your workspace</h2>
-                  <p>Checking your GitHub connection and review requests.</p>
+                  <p>Checking your GitHub connection and pull requests.</p>
                 </div>
               ) : !session?.user ? (
                 <div className="empty">
                   <div className="empty-icon">
                     <Github size={25} />
                   </div>
-                  <h2>Bring your review queue into focus</h2>
+                  <h2>
+                    {section === 'mine'
+                      ? 'Keep track of your pull requests'
+                      : 'Bring your review queue into focus'}
+                  </h2>
                   <p>
-                    Sign in with GitHub to see requests for you and your teams.
+                    {section === 'mine'
+                      ? 'Sign in with GitHub to see the pull requests you have opened.'
+                      : 'Sign in with GitHub to see requests for you and your teams.'}
                   </p>
                   {session?.configured ? (
                     <a className="primary" href="/auth/github">
@@ -382,12 +422,16 @@ export function App() {
                     <h2>
                       {filter
                         ? 'No matching pull requests'
-                        : 'You’re all caught up here'}
+                        : section === 'mine'
+                          ? 'No open pull requests'
+                          : 'You’re all caught up here'}
                     </h2>
                     <p>
                       {filter
                         ? 'Try a different title, repository or author.'
-                        : 'No pull requests in this review group.'}
+                        : section === 'mine'
+                          ? 'Your open pull requests will appear here.'
+                          : 'No pull requests in this review group.'}
                     </p>
                   </div>
                 )
@@ -409,16 +453,7 @@ export function App() {
               )}
             </footer>
           </>
-        ) : (
-          <section className="empty placeholder">
-            <span className="badge">Coming later</span>
-            <h2>This workspace is taking shape</h2>
-            <p>{current.description}</p>
-            <p className="muted">
-              This feature is a placeholder. No reviews are run or posted.
-            </p>
-          </section>
-        )}
+        }
       </main>
     </div>
   );

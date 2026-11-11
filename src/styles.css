@@ -129,7 +129,7 @@ nav {
   display: grid;
   gap: 4px;
 }
-nav button {
+nav a {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -142,10 +142,10 @@ nav button {
   min-height: 44px;
   font-size: 13px;
 }
-nav button:hover {
+nav a:hover {
   background: var(--surface);
 }
-nav button[aria-current='page'] {
+nav a[aria-current='page'] {
   color: var(--accent-text);
   background: var(--accent-soft);
   font-weight: 500;
@@ -484,7 +484,7 @@ footer a {
     gap: 4px;
     margin-top: 16px;
   }
-  nav button {
+  nav a {
     padding: 8px;
   }
   .account {
@@ -533,4 +533,20 @@ footer a {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+nav a {
+  text-decoration: none;
+}
+.nav-parent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 500;
+}
+nav a {
+  margin-left: 12px;
 }

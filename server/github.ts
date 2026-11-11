@@ -182,7 +182,11 @@ export class GitHub {
     return this.request<User>('https://api.github.com/user', token);
   }
 
-  async inbox(token: string, login: string): Promise<Inbox> {
+  async inbox(
+    token: string,
+    login: string,
+    mode: 'reviews' | 'authored' = 'reviews',
+  ): Promise<Inbox> {
     const warnings = new Set<string>();
     const list = async <T>(path: string): Promise<T[]> => {
       const items: T[] = [];
@@ -201,7 +205,7 @@ export class GitHub {
     };
     let teams: Team[] = [];
     try {
-      teams = await list<Team>('/user/teams');
+      if (mode === 'reviews') teams = await list<Team>('/user/teams');
     } catch (error) {
       if (
         !(error instanceof GitHubError) ||
@@ -213,14 +217,17 @@ export class GitHub {
       );
     }
     const candidates = new Map<string, SearchItem>();
-    const queries = [
-      `is:pr is:open review-requested:${login}`,
-      `is:pr is:open reviewed-by:${login}`,
-      ...teams.map(
-        (t) =>
-          `is:pr is:open team-review-requested:${t.organization.login}/${t.slug}`,
-      ),
-    ];
+    const queries =
+      mode === 'authored'
+        ? [`is:pr is:open author:${login}`]
+        : [
+            `is:pr is:open review-requested:${login}`,
+            `is:pr is:open reviewed-by:${login}`,
+            ...teams.map(
+              (t) =>
+                `is:pr is:open team-review-requested:${t.organization.login}/${t.slug}`,
+            ),
+          ];
     for (const query of queries) {
       for (let page = 1; page <= 10; page++) {
         const result = await this.request<SearchResult>(
@@ -254,6 +261,30 @@ export class GitHub {
             `https://api.github.com${path}/pulls/${item.number}`,
             token,
           );
+          if (mode === 'authored') {
+            if (
+              pull.state === 'open' &&
+              pull.user.login.toLowerCase() === login.toLowerCase()
+            ) {
+              pulls.push({
+                id: pull.id,
+                number: pull.number,
+                title: pull.title,
+                url: pull.html_url,
+                repository,
+                author: pull.user.login,
+                updatedAt: pull.updated_at,
+                draft: pull.draft,
+                group: null,
+                personal: false,
+                teams: [],
+                reviewState: null,
+                changedSinceReview: false,
+                uncertain: false,
+              });
+            }
+            continue;
+          }
           const reviews = await list<Review>(
             `${path}/pulls/${item.number}/reviews`,
           );

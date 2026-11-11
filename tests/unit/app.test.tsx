@@ -103,28 +103,108 @@ describe('workspace', () => {
     ).toHaveAttribute('href', '/auth/github');
     expect(screen.queryByText('Fix authorization')).not.toBeInTheDocument();
   });
-  it.each([
-    ['Review settings', 'Review settings'],
-    ['AI agents', 'AI agents'],
-    ['Results', 'Review results'],
-    ['Publishing', 'Publish a review'],
-  ])('opens the %s placeholder and returns', async (label, title) => {
+  it('shows only the two pull request subpages and loads authored PRs separately', async () => {
     mockApi();
+    vi.mocked(fetch).mockImplementation(async (path) =>
+      response(
+        path === '/api/session'
+          ? connected
+          : path === '/api/my-pulls'
+            ? {
+                ...inbox,
+                pulls: [
+                  {
+                    ...base,
+                    id: 4,
+                    title: 'My own change',
+                    author: 'lacko',
+                    group: null,
+                    personal: false,
+                    teams: [],
+                    changedSinceReview: false,
+                    uncertain: false,
+                  },
+                ],
+              }
+            : inbox,
+      ),
+    );
     render(<App />);
     await screen.findByText('Fix authorization');
-    const button = screen.getByRole('button', { name: label });
-    fireEvent.click(button);
-    expect(button).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(title);
+    for (const label of [
+      'Publishing',
+      'Results',
+      'AI agents',
+      'Review settings',
+    ])
+      expect(
+        screen.queryByRole('button', { name: label }),
+      ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'My pull requests' }));
+    expect(await screen.findByText('My own change')).toBeVisible();
+    expect(screen.queryByText('Fix authorization')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe('/pull-requests/mine');
     expect(
-      screen.getByText(
-        'This feature is a placeholder. No reviews are run or posted.',
+      screen.getByRole('link', { name: 'My pull requests' }),
+    ).toHaveAttribute('aria-current', 'page');
+    fireEvent.click(screen.getByRole('link', { name: 'Review requests' }));
+    await screen.findByText('Fix authorization');
+    expect(screen.getByRole('tablist')).toBeVisible();
+  });
+  it('directly opens the authored page and handles empty results and filtering', async () => {
+    window.history.replaceState({}, '', '/pull-requests/mine');
+    mockApi(connected, { ...inbox, pulls: [], warnings: [] });
+    vi.mocked(fetch).mockImplementation(async (path) =>
+      response(
+        path === '/api/session'
+          ? connected
+          : { ...inbox, pulls: [], warnings: [] },
       ),
-    ).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Pull requests' }));
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'Your review inbox',
     );
+    render(<App />);
+    expect(await screen.findByText('No open pull requests')).toBeVisible();
+    expect(fetch).toHaveBeenCalledWith('/api/my-pulls', expect.anything());
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Filter pull requests' }),
+      { target: { value: 'missing' } },
+    );
+    expect(screen.getByText('No matching pull requests')).toBeVisible();
+  });
+  it('shows a sign-in explanation on the authored page', async () => {
+    window.history.replaceState({}, '', '/pull-requests/mine');
+    mockApi({ ...connected, user: null });
+    render(<App />);
+    expect(
+      await screen.findByText('Keep track of your pull requests'),
+    ).toBeVisible();
+  });
+  it('does not replace a new page with a late response from the old page', async () => {
+    let resolveInbox!: (value: Response) => void;
+    const late = new Promise<Response>((resolve) => {
+      resolveInbox = resolve;
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string) =>
+        path === '/api/session'
+          ? response(connected)
+          : path === '/api/inbox'
+            ? late
+            : response({ ...inbox, pulls: [] }),
+      ),
+    );
+    render(<App />);
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith('/api/inbox', expect.anything()),
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'My pull requests' }));
+    await screen.findByText('No open pull requests');
+    resolveInbox(response(inbox));
+    await waitFor(() =>
+      expect(screen.getByText('No open pull requests')).toBeVisible(),
+    );
+    expect(screen.queryByText('Fix authorization')).not.toBeInTheDocument();
   });
   it('renders real PR details, group counts and separate commit/request flags', async () => {
     mockApi();
