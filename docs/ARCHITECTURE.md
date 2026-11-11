@@ -1,13 +1,25 @@
-# AI Buddy — initial implementation decisions
+# AI Buddy — native macOS architecture
 
-- **Product structure:** AI Buddy is a workspace for multiple developer tools. Pull requests is the first tool, with review-request and authored-PR subpages; no additional tool behavior is implemented yet.
-- **TypeScript, React/Vite, Fastify:** shared request/result types, a compact client, and one deployable server process. Runtime inputs and configuration are checked on the server. The application does not depend on the host's GitHub CLI session.
-- **PostgreSQL:** supports hosted sessions without attaching an instance-specific disk. This replaces the planning-stage SQLite suggestion because Sevalla is the production target. Local development and integration tests use separate PostgreSQL containers.
-- **GitHub App user authorization:** fine-grained read access and installation-scoped repositories. Review publishing is excluded. Expiring tokens end the local session; this version does not store or refresh refresh tokens.
-- **Pull request subpages:** review requests and the signed-in user’s own open PRs have separate URLs and authenticated endpoints. Authored PRs do not use review groups or fetch team membership/review history.
-- **Manual synchronization:** current requests plus submitted-review searches discover PRs; accessible timeline events resolve re-requests. Missing/partial data is visible instead of silently assigning an apparently certain classification.
-- **Focus design:** semantic CSS tokens, light theme, 15 px outer frame, compact list rows and three counted tabs. Inter is served from the application itself. No external font request is required.
-- **Docker:** development, verification and production image targets. Dependencies are pinned in `package-lock.json`. The Node base image is pinned by digest. The production image contains the built client/server and runtime dependencies, runs as `node`, and handles termination signals.
-- **Validation:** unit tests for classification/transport/UI; real PostgreSQL integration tests for expiry, persistence and one-time OAuth state; HTTP tests for auth boundaries; Chromium tests for the built app, responsive layout and keyboard use; a production-image smoke test in CI.
+AI Buddy is a local Swift/SwiftUI application for Apple Silicon, minimum macOS 14. There is no application account, web server, hosted database or cloud deployment. GitHub requests still require network access.
 
-Deferred: review execution, specialist agents, AI connections, review settings, result rendering, GitHub posting, webhook/polling updates, automatic token refresh, and multi-instance operational hardening. These remain outside this PR's product scope and have no navigation entries.
+## Boundaries
+
+- **AIBuddy:** SwiftUI views with Focus semantic tokens and bundled Inter. AppKit opens verified GitHub URLs and handles the clipboard. A narrow dependency factory supplies production services or isolated DEBUG-only UI-test fixtures.
+- **BuddyCore:** typed models, pure review classification, GitHub REST client, OAuth device flow and the main-actor Workspace coordinator. GitHubServing, GitHubAuthorization, HTTPTransport, CredentialStoring and InboxStoring are replaceable test boundaries. Async networking and actor-isolated persistence keep blocking I/O off the UI actor.
+- **Storage:** SQLite via Apple's system library; account-ID/page-scoped JSON snapshots and timestamps. Keychain stores the GitHub token and stable identity. Tokens never enter SQLite, preferences or logs. Files live in `~/Library/Application Support/AI Buddy/`; the cache directory/database use owner-only permissions.
+
+## GitHub
+
+A public client ID configures an OAuth App with device flow enabled. No secret, redirect server or CLI session is needed. Scopes are `repo read:org`; repo is broad and permits writing, but this version only uses read-only REST calls. Device polling follows the provided interval, adds five seconds on slow_down and stops on cancellation/expiry. HTTP redirects are rejected; API URLs and browser verification URLs are restricted to GitHub.
+
+Search combines personal requests, requested teams and submitted reviews, with deduplication. Pagination/search limits and missing team/repository permissions are visible warnings. Authored PRs have independent discovery and do not fetch teams or review history. Classification uses the latest submitted own review, current personal/team requests and relevant timeline events; new commits and uncertain history are separate flags.
+
+Workspace restores a Keychain credential and its account-scoped cache, then refreshes both pages. Manual refresh preserves old data on failure and marks it stale. Connection generations prevent late responses from reintroducing a disconnected account. Connecting is explicit; disconnect removes local credentials and cached data, without revoking GitHub's authorization grant. To revoke that grant, use GitHub Settings → Applications.
+
+## Build and delivery
+
+The checked-in Xcode project consumes the local BuddyCore package. `scripts/generate-project.py` regenerates the project deterministically without third-party tools. Swift Package Manager also builds the SwiftUI executable, allowing a local `.app` through `scripts/build-local.sh` on compatible Command Line Tools installations. Xcode is required for UI tests.
+
+The ARM64 macOS CI runs core tests, isolated UI tests, and a Release app build. UI fixtures are DEBUG-only and never touch production Keychain or disk. Initial distribution is a local unsigned/ad-hoc `.app`; Developer ID signing, notarization, DMG and updating are deferred. There is no migration of web sessions or PostgreSQL data; old data is left untouched.
+
+AI execution, provider setup, agent processes, review settings/results/posting, Enterprise and concurrent accounts are outside this version. Later tools can reuse connections and storage through explicit services; no plugin framework is introduced now.
