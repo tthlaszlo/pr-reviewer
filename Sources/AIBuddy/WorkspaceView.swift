@@ -55,7 +55,7 @@ struct WorkspaceView: View {
             Rectangle().fill(Focus.border).frame(height: 1).padding(.vertical, 16)
             if let user = workspace.user {
                 Label(user.login, systemImage: "person.crop.circle").font(Focus.font(12, weight: .medium))
-                Text("Connected to GitHub").font(Focus.font(11)).foregroundStyle(Focus.muted).padding(.top, 5)
+                Text(workspace.needsReconnection ? "Reconnect required" : "Connected to GitHub").font(Focus.font(11)).foregroundStyle(Focus.muted).padding(.top, 5)
                 Button("Disconnect GitHub") { confirmDisconnect = true }
                     .font(Focus.font(11)).foregroundStyle(Focus.accentText).buttonStyle(.plain).padding(.top, 10)
                     .disabled(workspace.disconnecting)
@@ -77,7 +77,7 @@ struct WorkspaceView: View {
                         .font(Focus.font(13)).foregroundStyle(Focus.muted)
                 }
                 Spacer(minLength: 12)
-                if workspace.user != nil {
+                if workspace.user != nil && !workspace.needsReconnection && !workspace.connecting && !workspace.restrictedPages.contains(page) {
                     Button { workspace.requestRefresh(page) } label: {
                         Label(workspace.refreshing.contains(page) ? "Refreshing…" : "Refresh", systemImage: "arrow.clockwise")
                     }.buttonStyle(FocusButtonStyle()).disabled(workspace.refreshing.contains(page))
@@ -86,59 +86,18 @@ struct WorkspaceView: View {
             }.padding(.bottom, 26)
             if workspace.starting && workspace.user == nil {
                 statePanel("Opening your workspace", detail: "Checking the GitHub connection stored on this Mac.", symbol: "hourglass")
-            } else if workspace.user == nil {
-                connectionPanel
+            } else if workspace.user == nil || workspace.needsReconnection || workspace.connecting {
+                ScrollView { GitHubConnectionView(workspace: workspace) }
+            } else if workspace.restrictedPages.contains(page) {
+                ScrollView {
+                    GitHubPermissionView(workspace: workspace, page: page, issues: [], fullPage: true)
+                }
             } else {
                 connectedContent
             }
             Spacer(minLength: 0)
             footer
         }.padding(28).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-    private var connectionPanel: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Image(systemName: "arrow.triangle.pull").font(.system(size: 27)).foregroundStyle(Focus.accentText)
-            Text("Connect GitHub to get started").font(Focus.font(20, weight: .semibold))
-            Text("See review requests from your teammates and teams, alongside your own open pull requests.")
-                .foregroundStyle(Focus.muted).fixedSize(horizontal: false, vertical: true)
-            if let error = workspace.connectionError { banner(error, warning: true) }
-            if !workspace.configured {
-                banner(BuddyError.configuration.localizedDescription, warning: true)
-                Button("Connect GitHub") { workspace.connect() }
-                    .buttonStyle(FocusButtonStyle(primary: true)).disabled(true)
-                    .accessibilityIdentifier("connect-github")
-            } else if let code = workspace.deviceCode {
-                Text("Enter this code on GitHub").font(Focus.font(12))
-                HStack(spacing: 16) {
-                    Text(code.user_code).font(.system(size: 24, weight: .semibold, design: .monospaced))
-                        .textSelection(.enabled).accessibilityLabel("GitHub device code")
-                        .accessibilityValue(code.user_code).accessibilityIdentifier("device-code")
-                    Button("Copy code") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(code.user_code, forType: .string)
-                    }.buttonStyle(FocusButtonStyle())
-                }
-                HStack {
-                    Button("Open GitHub") { NSWorkspace.shared.open(code.verification_uri) }.buttonStyle(FocusButtonStyle(primary: true))
-                    Button("Cancel") { Task { await workspace.cancelConnection() } }
-                        .buttonStyle(FocusButtonStyle()).accessibilityIdentifier("cancel-connection")
-                }
-                Text("Waiting for approval in your browser. This code expires in about \(max(1, code.expires_in / 60)) minutes.")
-                    .font(Focus.font(12)).foregroundStyle(Focus.muted)
-            } else {
-                HStack {
-                    Button(workspace.connecting ? "Connecting…" : "Connect GitHub") { workspace.connect() }
-                        .buttonStyle(FocusButtonStyle(primary: true))
-                        .disabled(!workspace.configured || workspace.connecting || workspace.disconnecting)
-                        .accessibilityIdentifier("connect-github")
-                    if workspace.connecting { ProgressView().controlSize(.small) }
-                }
-            }
-            Text("Private repositories and teams require repo and read:org access. GitHub's repo scope also permits writes; this version only reads PR data.")
-                .font(Focus.font(11)).foregroundStyle(Focus.muted).fixedSize(horizontal: false, vertical: true)
-        }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Focus.surface).clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Focus.border))
     }
     @ViewBuilder private var connectedContent: some View {
         if page == .reviews {
@@ -169,7 +128,12 @@ struct WorkspaceView: View {
             if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).accessibilityLabel("Clear filter") }
         }.padding(10).background(Focus.surface).clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).stroke(Focus.border)).padding(.vertical, 18)
+        if let error = workspace.connectionError { banner(error, warning: true).padding(.bottom, 12) }
         if let error = workspace.errors[page] { banner(error, warning: true).padding(.bottom, 12) }
+        if let inbox, !inbox.accessIssues.isEmpty {
+            GitHubPermissionView(workspace: workspace, page: page, issues: inbox.accessIssues, fullPage: false)
+                .padding(.bottom, 16)
+        }
         if workspace.stale.contains(page) {
             banner("Showing saved data. This list may be out of date.", warning: true).padding(.bottom, 12)
         }

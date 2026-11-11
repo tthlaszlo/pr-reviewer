@@ -52,12 +52,48 @@ public struct PullRequest: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+public enum GitHubAccessIssue: Codable, Equatable, Hashable, Sendable {
+    case teamMembership
+    case repository(String)
+
+    public var explanation: String {
+        switch self {
+        case .teamMembership: "Team requests may be missing because GitHub did not allow access to your teams."
+        case .repository(let name): "GitHub did not allow access to \(name). It may be restricted or no longer available."
+        }
+    }
+}
+
+public enum GitHubAccessHelp {
+    public static let applicationsURL = URL(string: "https://github.com/settings/applications")!
+    public static let organizationURL = URL(string: "https://docs.github.com/en/account-and-profile/how-tos/organization-membership/requesting-organization-approval-for-oauth-apps")!
+    public static let ssoURL = URL(string: "https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-single-sign-on/authorizing-an-app-for-single-sign-on")!
+
+    public static func settingsURL(clientID: String) -> URL {
+        let id = clientID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
+        guard !id.isEmpty, id.unicodeScalars.allSatisfy(allowed.contains) else { return applicationsURL }
+        return URL(string: "https://github.com/settings/connections/applications/\(id)")!
+    }
+}
+
 public struct Inbox: Codable, Equatable, Sendable {
     public var pulls: [PullRequest]
     public var warnings: [String]
     public var syncedAt: Date
-    public init(pulls: [PullRequest], warnings: [String] = [], syncedAt: Date = Date()) {
-        self.pulls = pulls; self.warnings = warnings; self.syncedAt = syncedAt
+    public var accessIssues: [GitHubAccessIssue]
+    public init(pulls: [PullRequest], warnings: [String] = [], syncedAt: Date = Date(),
+                accessIssues: [GitHubAccessIssue] = []) {
+        self.pulls = pulls; self.warnings = warnings; self.syncedAt = syncedAt; self.accessIssues = accessIssues
+    }
+    private enum CodingKeys: String, CodingKey { case pulls, warnings, syncedAt, accessIssues }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        pulls = try values.decode([PullRequest].self, forKey: .pulls)
+        warnings = try values.decode([String].self, forKey: .warnings)
+        syncedAt = try values.decode(Date.self, forKey: .syncedAt)
+        // Snapshots from the first native version have no structured access metadata.
+        accessIssues = try values.decodeIfPresent([GitHubAccessIssue].self, forKey: .accessIssues) ?? []
     }
 }
 
@@ -67,11 +103,11 @@ public enum BuddyError: Error, Equatable, LocalizedError, Sendable {
     public var errorDescription: String? {
         switch self {
         case .unavailable: "GitHub is unavailable. Check your connection and try again."
-        case .unauthorized: "Your GitHub authorization is no longer valid. Disconnect and reconnect GitHub."
+        case .unauthorized: "Your GitHub authorization is no longer valid. Reconnect GitHub to restore access."
         case .permissions: "GitHub access is restricted. Check repository access, organization approval and SSO authorization."
         case .rateLimited: "GitHub's rate limit was reached. Please try again later."
         case .invalidResponse: "GitHub returned an unexpected response. Please try again."
-        case .configuration: "GitHub connection is not configured. Set GITHUB_CLIENT_ID when building AI Buddy."
+        case .configuration: "This build cannot connect to GitHub yet. Please use a build configured by the app developer."
         case .denied: "GitHub authorization was declined. You can try connecting again."
         case .expired: "The connection code expired. Please start again."
         case .storage: "Local data could not be read or saved. Please check available disk space and file permissions."
