@@ -1,56 +1,56 @@
-# AI Buddy — projekt- és fejlesztési szabályok
+# AI Buddy — project and development rules
 
-## Munka megkezdése
+## Starting work
 
-- A tervezés és a szabályok egyeztetése önmagában nem engedély a fejlesztés megkezdésére.
-- Fejlesztést csak a felhasználó kifejezett kérésére kezdj. Addig kizárólag az aktuálisan kért tervezési vagy dokumentációs feladatot végezd el.
-- Tartsd be az aktuális kérés határait; ne kezdj el előre későbbi funkciókat megvalósítani.
+- Planning and discussing rules do not, by themselves, authorize implementation.
+- Start development only when the user explicitly requests it. Until then, perform only the planning or documentation task currently requested.
+- Stay within the scope of the current request; do not start implementing future features ahead of time.
 
-## Fejlesztési és futtatási környezet
+## Development and runtime environment
 
-- Kizárólag helyben futó natív macOS-alkalmazás, Apple Silicon ARM64 célplatformmal; minimum macOS 14.
-- Swift + SwiftUI, külön Swift Package az alkalmazáslogikához és Xcode-projekt az apphoz/UI-tesztekhez.
-- A fejlesztés és tesztelés macOS-en történik. Docker és Sevalla már nem része a terméknek.
-- A tokeneket macOS Keychainben, a PR-gyorsítótárat helyi SQLite-adatbázisban tároljuk. Titkot ne commitolj vagy naplózz.
-- A régi webverzió PostgreSQL-volume-jait és helyi titkait ne töröld az átálláskor.
+- A native macOS application that runs exclusively locally, targeting Apple Silicon ARM64; minimum macOS 14.
+- Swift + SwiftUI, with a separate Swift Package for application logic and an Xcode project for the app and UI tests.
+- Development and testing take place on macOS. Docker and Sevalla are no longer part of the product.
+- Store tokens in macOS Keychain and the PR cache in a local SQLite database. Never commit or log secrets.
+- Do not delete PostgreSQL volumes or local secrets from the old web version during the migration.
 
-## Kötelező design system
+## Required design system
 
-- Minden felületi tervezés és fejlesztés előtt olvasd el a [Focus design systemet](docs/DESIGN_SYSTEM.md), és kövesd az ott rögzített szabályokat.
-- Az elfogadott designirány a **Focus**. Az alapértelmezett megjelenés világos; az alkalmazás külső keretének lekerekítése 15 px.
-- Új képernyők, komponensek, állapotok és placeholderek is ezt a design systemet használják. Új elemeknél a dokumentált tokeneket és mintákat bővítsd, ne vezess be párhuzamos vizuális stílust.
-- A designirányt és az elfogadott alapbeállításokat csak a felhasználó kifejezett kérésére változtasd meg. A jóváhagyott változtatásokat a design system dokumentációjában is vezesd át.
+- Before designing or implementing any UI, read the [Focus design system](docs/DESIGN_SYSTEM.md) and follow its rules.
+- The accepted design direction is **Focus**. The default appearance is light; the application's outer frame has a 15 px corner radius.
+- New screens, components, states and placeholders must use this design system. Extend the documented tokens and patterns for new elements rather than introducing a parallel visual style.
+- Change the design direction and accepted defaults only at the user's explicit request. Update the design system documentation to reflect approved changes.
 
-## Git és pull requestek
+## Git and pull requests
 
-- GitHub-repó: https://github.com/tthlaszlo/pr-reviewer
-- Minden fejlesztés külön branchen és külön pull requestben készüljön.
-- Fejlesztési változtatást ne pusholj közvetlenül a `main` ágra.
-- A `main` ágba csak stabil, tesztelt és ellenőrzött változtatás kerülhet, pull requesten keresztül.
+- GitHub repository: https://github.com/tthlaszlo/pr-reviewer
+- Each development change must use a separate branch and a separate pull request.
+- Do not push development changes directly to `main`.
+- Only stable, tested and verified changes may enter `main`, through a pull request.
 
-## Tesztelés
+## Testing
 
-- Minden megvalósított működés legyen tesztekkel lefedve.
-- A tesztek a működési követelményeket, a releváns hibakezelést és a szélső eseteket ellenőrizzék.
-- Hibajavításhoz készüljön a hibát reprodukáló regressziós teszt.
-- A változtatáshoz tartozó teszteket és ellenőrzéseket futtasd le, az eredményüket pedig jelezd az átadáskor.
-- Sikertelen vagy el nem végzett ellenőrzést ne állíts be sikeresnek.
+- Cover every implemented behavior with tests.
+- Tests must verify functional requirements, relevant error handling and edge cases.
+- Bug fixes must include a regression test that reproduces the bug.
+- Run the tests and checks relevant to the change, and report their results when handing over the work.
+- Never report a failed or unperformed check as successful.
 
-## Termék és jelenlegi hatókör
+## Product and current scope
 
-- A termék neve AI Buddy; hosszabb távon több fejlesztői tool közös munkafelülete. Az első tool a PR-reviewk részleges automatizálását támogatja.
-- A PR-lista a felhasználónak személyesen, illetve a csapatain keresztül érkező review-kéréseket fogja össze.
-- A kért csoportok: még nem adott reviewt; már adott reviewt és a PR várakozik; újra meghívták reviewra.
-- A review részletes működését és beállításait, az AI-agenteket, az eredményoldalt és a GitHubra posztolást később tervezzük és valósítjuk meg. Ezekhez egyelőre ne jelenjen meg külön menüpont.
-- A későbbi cél a saját Claude- vagy ChatGPT-előfizetések használata specialist agentekkel; az integráció részletei még nincsenek véglegesítve.
-- A korábbi technológiai és GitHub-bejelentkezési javaslatokat ne kezeld automatikusan végleges döntésként.
+- The product is named AI Buddy; its long-term goal is a shared workspace for multiple developer tools. The first tool supports partial automation of PR reviews.
+- The PR list combines review requests sent to the user personally and through their teams.
+- The required groups are: not yet reviewed by the user; already reviewed and the PR is waiting; requested to review again.
+- Detailed review behavior and settings, AI agents, the results page and posting to GitHub will be designed and implemented later. Do not add separate navigation items for them yet.
+- The future goal is to use the user's own Claude or ChatGPT subscriptions with specialist agents; integration details have not been finalized.
+- Do not automatically treat earlier technology or GitHub login proposals as final decisions.
 
-- A Pull requests oldal két aloldala: a személyes/csapatos review-kérések és a felhasználó saját nyitott PR-jei. A három review-csoport az első aloldalon marad.
+- The Pull requests tool has two subpages: personal/team review requests and the user's own open PRs. The three review groups remain on the first subpage.
 
-## Natív alkalmazás és GitHub-kapcsolat
+## Native application and GitHub connection
 
-- Nincs alkalmazásszintű bejelentkezés, Google-login, saját fiók vagy szerveroldali munkamenet.
-- A munkafelület indítás után azonnal elérhető; GitHubhoz saját OAuth device flow-val csatlakozunk.
-- Egy GitHub.com-fiók támogatott. Client secret nem csomagolható a desktop alkalmazásba.
-- A Focus korábbi látványa megmarad: Inter, világos felület, szemantikus színek, kompakt listák; natív macOS ablakvezérlők.
-- A Swift-teszteket és az Xcode-os UI-teszteket futtasd a dokumentált parancsokkal. Hiányzó Xcode vagy OAuth-konfiguráció esetén pontosan jelezd az ellenőrzés korlátját.
+- There is no application-level login, Google login, separate application account or server-side session.
+- The workspace is available immediately after launch; connect to GitHub through the app's own OAuth device flow.
+- One GitHub.com account is supported. Never bundle a client secret with the desktop application.
+- Preserve the existing Focus appearance: Inter, a light interface, semantic colors and compact lists, with native macOS window controls.
+- Run Swift tests and Xcode UI tests using the documented commands. If Xcode or OAuth configuration is missing, report the verification limitation accurately.
