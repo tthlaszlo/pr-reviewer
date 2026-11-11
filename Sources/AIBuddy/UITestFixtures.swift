@@ -32,6 +32,15 @@ private struct FixtureGitHub: GitHubServing {
         if scenario == "expired" { throw BuddyError.unauthorized }
         return GitHubUser(id: 1, login: "local-developer")
     }
+    func reviews(token: String, pull: PullRequest) async throws -> ReviewHistory {
+        if scenario == "reviews-error" { throw BuddyError.unavailable }
+        if scenario == "reviews-empty" { return ReviewHistory() }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let reviews = try decoder.decode([SubmittedReview].self, from: Data(#"[{"id":1,"user":{"login":"reviewer"},"state":"APPROVED","body":"Looks good to me!","submitted_at":"2026-11-11T10:00:00Z"},{"id":2,"user":{"login":"teammate"},"state":"CHANGES_REQUESTED","body":"Please handle the error case.","submitted_at":"2026-11-11T11:00:00Z"}]"#.utf8))
+        let comments = try decoder.decode([ReviewComment].self, from: Data(#"[{"id":3,"user":{"login":"teammate"},"body":"This can fail when offline.","path":"Sources/Client.swift","line":42,"created_at":"2026-11-11T11:00:00Z"}]"#.utf8))
+        return ReviewHistory(reviews: reviews, comments: comments, partial: scenario == "reviews-partial")
+    }
     func inbox(token: String, login: String, page: PRPage) async throws -> Inbox {
         if scenario == "error" || (scenario == "reviews-restricted" && page == .reviews) { throw BuddyError.permissions }
         if scenario == "empty" { return Inbox(pulls: []) }

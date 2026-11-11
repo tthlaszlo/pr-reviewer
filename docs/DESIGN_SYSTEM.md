@@ -152,3 +152,9 @@ Az oldalsáv Settings menüpontja és a macOS alkalmazásmenü Settings művelet
 A GitHub-panel a fiókot, az összes PR-oldalból összesített aktuális kapcsolati állapotot és az utolsó sikeres szinkront mutatja. Külön állapot a csatlakoztatás, ellenőrzés, leválasztott kapcsolat, lejárt engedély, részleges hozzáférés, egyéb hiba és a hiányzó buildkonfiguráció. A token értéke soha nem jelenik meg.
 
 A kapcsolat ellenőrizhető, újracsatlakoztatható, GitHubon kezelhető, illetve helyben törölhető. A helyi törlés megerősítést kér, és szövegesen különbözik a GitHubon adott engedély visszavonásától. Sikertelen Keychain- vagy cache-törlésnél a státusz Removal incomplete; újrapróbálható, nem mutathat sikeres leválasztást. Ez alkalmazásszintű Settings, nem a későbbi Review settings funkció.
+
+## Saját PR-ek review-nézete
+
+A My pull requests sorai az alkalmazáson belüli review-nézetet nyitják meg. A bal oldali navigáció megmarad; a My pull requests visszalépő művelet megőrzi a lista szűrését. A fejlécben a PR címe, repository és szám, Open on GitHub link és Refresh művelet látszik. Nincs új navigációs menüpont.
+
+A review-k időrendben, finom elválasztókkal jelennek meg: reviewer, szöveges státusz, időpont és kijelölhető teljes szöveg. Az üres összefoglaló külön jelzést kap. A Code comments szakaszban szerző, időpont, fájl és sor, valamint a megjegyzés látszik; az elavult sorhivatkozást Outdated jelöli. A szövegek törnek, a tartalom görgethető. A betöltés, hiányzó review, hiányos előzmény és újrapróbálható hiba külön állapot. A nézet kizárólag olvasásra szolgál.

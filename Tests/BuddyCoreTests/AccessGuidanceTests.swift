@@ -11,6 +11,7 @@ private actor AccessGitHub: GitHubServing {
         if let userError { throw userError }
         return identity
     }
+    func reviews(token: String, pull: PullRequest) async throws -> ReviewHistory { ReviewHistory() }
     func inbox(token: String, login: String, page: PRPage) throws -> Inbox {
         calls += 1
         if let error = pageErrors[page] { throw error }

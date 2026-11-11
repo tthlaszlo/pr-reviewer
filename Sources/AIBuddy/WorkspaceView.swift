@@ -29,7 +29,8 @@ struct WorkspaceView: View {
             Button("Cancel", role: .cancel) { }
             Button("Disconnect", role: .destructive) { Task { await workspace.disconnect() } }
         } message: { Text("This removes the GitHub token and cached pull requests from this Mac. It does not revoke the app on GitHub.") }
-        .onChange(of: page) { _, _ in query = "" }
+        .onChange(of: page) { _, _ in query = ""; workspace.closeReviews() }
+        .onChange(of: showingSettings) { _, _ in workspace.closeReviews() }
     }
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -42,7 +43,7 @@ struct WorkspaceView: View {
             Label("Pull requests", systemImage: "arrow.triangle.pull").font(Focus.font(13, weight: .semibold))
                 .padding(.bottom, 12)
             ForEach(PRPage.allCases, id: \.self) { destination in
-                Button { page = destination; showingSettings = false } label: {
+                Button { workspace.closeReviews(); page = destination; showingSettings = false } label: {
                     Text(destination.title).font(Focus.font(12, weight: page == destination && !showingSettings ? .semibold : .regular))
                         .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 10).padding(.horizontal, 10)
                         .foregroundStyle(page == destination && !showingSettings ? Focus.accentText : Focus.muted)
@@ -80,6 +81,7 @@ struct WorkspaceView: View {
     }
     @ViewBuilder private var content: some View {
         if showingSettings { GitHubSettingsView(workspace: workspace) }
+        else if let pull = workspace.selectedPull { PullReviewsView(workspace: workspace, pull: pull) }
         else { pullRequestsContent }
     }
     private var pullRequestsContent: some View {
@@ -165,7 +167,12 @@ struct WorkspaceView: View {
         } else {
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(rows) { pull in PRRow(pull: pull) }
+                    ForEach(rows) { pull in
+                        PRRow(pull: pull, open: {
+                            if page == .authored { workspace.openReviews(pull) }
+                            else { NSWorkspace.shared.open(pull.url) }
+                        })
+                    }
                 }
             }.accessibilityIdentifier("pr-list")
         }
@@ -200,27 +207,29 @@ struct WorkspaceView: View {
 
 private struct PRRow: View {
     let pull: PullRequest
+    let open: () -> Void
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: pull.draft ? "doc.text" : "arrow.triangle.pull")
-                    .font(.system(size: 16)).foregroundStyle(pull.draft ? Focus.muted : Focus.success).padding(.top, 3)
-                VStack(alignment: .leading, spacing: 8) {
-                    Button { NSWorkspace.shared.open(pull.url) } label: {
+            Button(action: open) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: pull.draft ? "doc.text" : "arrow.triangle.pull")
+                        .font(.system(size: 16)).foregroundStyle(pull.draft ? Focus.muted : Focus.success).padding(.top, 3)
+                    VStack(alignment: .leading, spacing: 8) {
                         Text(pull.title).font(Focus.font(14, weight: .medium)).multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
-                    }.buttonStyle(.plain).accessibilityIdentifier("pr-\(pull.number)")
-                    Text("\(pull.repository)  #\(pull.number)  ·  \(pull.author)")
-                        .font(Focus.font(12)).foregroundStyle(Focus.muted).textSelection(.enabled)
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 8) { badges }
-                        VStack(alignment: .leading, spacing: 6) { badges }
+                        Text("\(pull.repository)  #\(pull.number)  ·  \(pull.author)")
+                            .font(Focus.font(12)).foregroundStyle(Focus.muted).textSelection(.enabled)
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 8) { badges }
+                            VStack(alignment: .leading, spacing: 6) { badges }
+                        }
                     }
-                }
-                Spacer(minLength: 8)
-                Text(pull.updatedAt, style: .relative).font(Focus.font(11)).foregroundStyle(Focus.muted)
-                    .frame(width: 80, alignment: .trailing).accessibilityLabel("Last updated \(pull.updatedAt.formatted())")
-            }.padding(.vertical, 18)
+                    Spacer(minLength: 8)
+                    Text(pull.updatedAt, style: .relative).font(Focus.font(11)).foregroundStyle(Focus.muted)
+                        .frame(width: 80, alignment: .trailing).accessibilityLabel("Last updated \(pull.updatedAt.formatted())")
+                }.padding(.vertical, 18).contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityIdentifier("pr-\(pull.number)")
+                .accessibilityLabel(pull.title)
             Rectangle().fill(Focus.border).frame(height: 1)
         }
     }
