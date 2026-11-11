@@ -5,11 +5,11 @@ let package = Package(
     name: "AIBuddy",
     platforms: [.macOS(.v14)],
     products: [.library(name: "BuddyCore", targets: ["BuddyCore"]),
-               .executable(name: "AIBuddy", targets: ["AIBuddy"])],
+               .executable(name: "BuddyDesktop", targets: ["BuddyDesktop"])],
     targets: [
         .systemLibrary(name: "CSQLite"),
         .target(name: "BuddyCore", dependencies: ["CSQLite"]),
-        .executableTarget(name: "AIBuddy", dependencies: ["BuddyCore"],
+        .executableTarget(name: "BuddyDesktop", dependencies: ["BuddyCore"], path: "Sources/AIBuddy",
                           resources: [.copy("Resources")]),
         .testTarget(name: "BuddyCoreTests", dependencies: ["BuddyCore"])
     ]

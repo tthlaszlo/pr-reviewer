@@ -8,8 +8,8 @@ swift build "${arguments[@]}"
 bin_path="$(swift build "${arguments[@]}" --show-bin-path)"
 app="$PWD/.build/local/AIBuddy.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-cp "$bin_path/AIBuddy" "$app/Contents/MacOS/AIBuddy"
-cp -R "$bin_path/AIBuddy_AIBuddy.bundle" "$app/Contents/Resources/"
+cp "$bin_path/BuddyDesktop" "$app/Contents/MacOS/AIBuddy"
+cp -R "$bin_path/AIBuddy_BuddyDesktop.bundle" "$app/Contents/Resources/"
 python3 - "$app" <<'PY'
 import os, plistlib, sys
 from pathlib import Path
