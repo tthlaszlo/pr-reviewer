@@ -1,0 +1,41 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    name: Docker verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose
+        run: docker compose --profile test config --quiet
+      - name: Typecheck, unit, integration, build and browser tests
+        run: docker compose --profile test run --build --rm test
+      - name: Build production image
+        run: docker build --target production -t pr-reviewer:ci .
+      - name: Smoke-test production image
+        run: |
+          docker compose up -d --wait db
+          docker run -d --name production-smoke --network pr-reviewer_default -p 127.0.0.1:8080:8080 -e APP_URL=https://pr-reviewer.example -e DATABASE_URL=postgres://reviewer:reviewer@db:5432/reviewer pr-reviewer:ci
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/healthz; then
+              curl --fail --silent http://127.0.0.1:8080/ | grep -q 'PR Reviewer'
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs production-smoke
+          exit 1
+      - name: Clean up
+        if: always()
+        run: |
+          docker rm -f production-smoke || true
+          docker compose --profile test down --volumes
