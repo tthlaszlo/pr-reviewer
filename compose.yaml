@@ -1,0 +1,81 @@
+name: ai-buddy
+services:
+  app:
+    build:
+      context: .
+      target: development
+    init: true
+    ports:
+      - '127.0.0.1:${APP_PORT:-3000}:3000'
+    environment:
+      NODE_ENV: development
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      DATABASE_URL: ${DATABASE_URL:-postgres://reviewer:reviewer@db:5432/reviewer}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_INSTALL_URL: ${GITHUB_INSTALL_URL:-}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+    volumes:
+      - ./src:/app/src:ro
+      - ./server:/app/server:ro
+      - ./shared:/app/shared:ro
+      - ./index.html:/app/index.html:ro
+      - ./vite.config.ts:/app/vite.config.ts:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3001/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: reviewer
+      POSTGRES_PASSWORD: reviewer
+      POSTGRES_DB: reviewer
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U reviewer -d reviewer']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  test:
+    profiles: [test]
+    build:
+      context: .
+      target: test
+    init: true
+    environment:
+      NODE_ENV: test
+      APP_URL: http://localhost:3100
+      DATABASE_URL: postgres://reviewer:test@db-test:5432/reviewer_test
+    depends_on:
+      db-test:
+        condition: service_healthy
+    shm_size: 1gb
+  db-test:
+    profiles: [test]
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: reviewer
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: reviewer_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U reviewer -d reviewer_test']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+volumes:
+  database:
+    name: ${DATABASE_VOLUME:-ai-buddy_database}

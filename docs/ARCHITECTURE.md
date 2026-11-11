@@ -1,0 +1,13 @@
+# AI Buddy — initial implementation decisions
+
+- **Product structure:** AI Buddy is a workspace for multiple developer tools. Pull requests is the first tool, with review-request and authored-PR subpages; no additional tool behavior is implemented yet.
+- **TypeScript, React/Vite, Fastify:** shared request/result types, a compact client, and one deployable server process. Runtime inputs and configuration are checked on the server. The application does not depend on the host's GitHub CLI session.
+- **PostgreSQL:** supports hosted sessions without attaching an instance-specific disk. This replaces the planning-stage SQLite suggestion because Sevalla is the production target. Local development and integration tests use separate PostgreSQL containers.
+- **GitHub App user authorization:** fine-grained read access and installation-scoped repositories. Review publishing is excluded. Expiring tokens end the local session; this version does not store or refresh refresh tokens.
+- **Pull request subpages:** review requests and the signed-in user’s own open PRs have separate URLs and authenticated endpoints. Authored PRs do not use review groups or fetch team membership/review history.
+- **Manual synchronization:** current requests plus submitted-review searches discover PRs; accessible timeline events resolve re-requests. Missing/partial data is visible instead of silently assigning an apparently certain classification.
+- **Focus design:** semantic CSS tokens, light theme, 15 px outer frame, compact list rows and three counted tabs. Inter is served from the application itself. No external font request is required.
+- **Docker:** development, verification and production image targets. Dependencies are pinned in `package-lock.json`. The Node base image is pinned by digest. The production image contains the built client/server and runtime dependencies, runs as `node`, and handles termination signals.
+- **Validation:** unit tests for classification/transport/UI; real PostgreSQL integration tests for expiry, persistence and one-time OAuth state; HTTP tests for auth boundaries; Chromium tests for the built app, responsive layout and keyboard use; a production-image smoke test in CI.
+
+Deferred: review execution, specialist agents, AI connections, review settings, result rendering, GitHub posting, webhook/polling updates, automatic token refresh, and multi-instance operational hardening. These remain outside this PR's product scope and have no navigation entries.
