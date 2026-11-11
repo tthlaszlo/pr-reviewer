@@ -105,11 +105,15 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["device-code"].exists)
     }
     func testAccessGuidanceScreenshots() {
-        for scenario in ["disconnected", "expired", "reviews-restricted", "partial"] {
-            let app = launch(scenario)
+        for scenario in ["disconnected", "device-code", "expired", "reviews-restricted", "partial"] {
+            let app = launch(scenario == "device-code" ? "disconnected" : scenario)
             let element = scenario == "partial" ? app.buttons["show-access-help"] :
                 scenario == "reviews-restricted" ? app.buttons["check-github-access"] : app.buttons["connect-github"]
             XCTAssertTrue(element.waitForExistence(timeout: 10))
+            if scenario == "device-code" {
+                app.buttons["connect-github"].click()
+                XCTAssertTrue(app.staticTexts["device-code"].waitForExistence(timeout: 5))
+            }
             let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
             attachment.name = "GitHub access — \(scenario)"
             attachment.lifetime = .keepAlways

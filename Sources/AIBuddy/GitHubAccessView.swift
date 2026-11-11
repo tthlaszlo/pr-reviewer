@@ -81,7 +81,6 @@ struct GitHubConnectionView: View {
         .padding(24).frame(maxWidth: .infinity, alignment: .leading)
         .background(Focus.surface).clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Focus.border))
-        .accessibilityIdentifier("github-connection-guide")
     }
     private func step(_ number: Int, _ title: String, detail: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
@@ -132,8 +131,7 @@ struct GitHubPermissionView: View {
         }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
             .background(Focus.surface).clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Focus.border))
-            .accessibilityIdentifier("github-partial-access")
-    }
+        }
     private var fullPanel: some View {
         VStack(alignment: .leading, spacing: 14) {
             Label(fullPage ? "Set up GitHub access" : "Some GitHub access is missing", systemImage: "lock.shield")
@@ -164,8 +162,7 @@ struct GitHubPermissionView: View {
         }.padding(fullPage ? 24 : 18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Focus.surface).clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Focus.border))
-            .accessibilityIdentifier("github-permission-guide")
-    }
+        }
     @ViewBuilder private var actions: some View {
         Button { NSWorkspace.shared.open(workspace.applicationSettingsURL) } label: {
             Label("Open GitHub access settings", systemImage: "arrow.up.right")
