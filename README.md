@@ -57,3 +57,9 @@ PR snapshots are stored in `~/Library/Application Support/AI Buddy/inbox.sqlite`
 Work on feature branches and open a PR; `main` accepts stable, tested changes. The native app replaces the earlier React/Fastify/PostgreSQL/Docker deployment. Existing PostgreSQL volumes and ignored local `.env` files are left untouched; old web sessions are not imported. The repository name remains `pr-reviewer`.
 
 See [architecture](docs/ARCHITECTURE.md), [Focus design](docs/DESIGN_SYSTEM.md) and [project rules](AGENTS.md).
+
+## Restoring GitHub access
+
+Both PR pages show a guided connection screen when GitHub is disconnected or the token has expired/been revoked. Choose **Connect GitHub** or **Reconnect GitHub**, copy the one-time code and open GitHub in your browser. The app waits for approval and refreshes automatically. You can cancel, or request another code after expiry/denial. End users do not need their own OAuth App; configuring the public client ID is the app developer's one-time build setup.
+
+If only a repository, organization or team is inaccessible, available PRs remain visible. Choose **Set up access** for instructions, or **Check access again** after fixing permissions. A complete page-level restriction shows the instructions directly. Open the app's GitHub access settings to request organization approval; if your organization uses SSO, establish its browser SSO session first and reconnect AI Buddy. See [organization approval](https://docs.github.com/en/account-and-profile/how-tos/organization-membership/requesting-organization-approval-for-oauth-apps) and [SSO authorization](https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-single-sign-on/authorizing-an-app-for-single-sign-on). An organization owner may need to approve access; the app cannot grant repository membership itself.

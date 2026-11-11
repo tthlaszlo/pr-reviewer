@@ -45,6 +45,7 @@ public struct GitHubClient: GitHubServing {
     }
     public func inbox(token: String, login: String, page: PRPage) async throws -> Inbox {
         var warnings: Set<String> = []
+        var accessIssues: [GitHubAccessIssue] = []
         var teams: [Team] = []
         if page == .reviews {
             do {
@@ -52,7 +53,7 @@ public struct GitHubClient: GitHubServing {
                 teams = items
                 if partial { warnings.insert("Team membership is incomplete; some requests may be missing.") }
             } catch BuddyError.permissions {
-                warnings.insert("Team membership is unavailable. Check read:org access, organization approval and SSO. Team requests may be missing.")
+                accessIssues.append(.teamMembership)
             }
         }
         struct SearchItem: Decodable, Sendable { let number: Int; let repository_url: URL }
@@ -107,9 +108,9 @@ public struct GitHubClient: GitHubServing {
                     }
                 }
             } catch BuddyError.permissions {
-                warnings.insert("Cannot read \(repository)#\(item.number). Check repository access and organization approval.")
+                accessIssues.append(.repository("\(repository)#\(item.number)"))
             }
         }
-        return Inbox(pulls: pulls.sorted { $0.updatedAt > $1.updatedAt }, warnings: warnings.sorted())
+        return Inbox(pulls: pulls.sorted { $0.updatedAt > $1.updatedAt }, warnings: warnings.sorted(), accessIssues: accessIssues)
     }
 }

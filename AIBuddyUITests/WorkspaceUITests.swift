@@ -50,16 +50,82 @@ final class WorkspaceUITests: XCTestCase {
         app.terminate()
         let partial = launch("partial")
         XCTAssertTrue(partial.buttons["pr-10"].waitForExistence(timeout: 10))
-        XCTAssertTrue(partial.staticTexts["Team membership is unavailable. Team requests may be missing."].exists)
+        XCTAssertTrue(partial.buttons["show-access-help"].exists)
+        partial.buttons["show-access-help"].click()
+        XCTAssertTrue(partial.sheets.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(partial.sheets.buttons["open-access-settings"].exists)
+        XCTAssertTrue(partial.sheets.buttons["reauthorize-github"].exists)
     }
     func testPermissionErrorAndDisconnect() {
         let app = launch("error")
-        XCTAssertTrue(app.staticTexts["Pull requests could not be loaded"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["refresh"].isEnabled)
+        XCTAssertTrue(app.staticTexts["Set up GitHub access"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["check-github-access"].isEnabled)
         app.buttons["disconnect"].click()
         XCTAssertTrue(app.sheets.firstMatch.waitForExistence(timeout: 5))
         app.sheets.firstMatch.buttons["Disconnect"].click()
         XCTAssertTrue(app.buttons["connect-github"].waitForExistence(timeout: 5))
+    }
+    func testExpiredAccessShowsReconnectOnBothPages() {
+        let app = launch("expired")
+        XCTAssertTrue(app.staticTexts["Reconnect GitHub to continue"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["group-awaiting"].exists)
+        app.buttons["nav-authored"].click()
+        XCTAssertTrue(app.staticTexts["Reconnect GitHub to continue"].exists)
+        app.buttons["connect-github"].click()
+        XCTAssertTrue(app.staticTexts["device-code"].waitForExistence(timeout: 5))
+        app.buttons["cancel-connection"].click()
+        XCTAssertTrue(app.buttons["connect-github"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Reconnect GitHub to continue"].exists)
+    }
+    func testRestrictedPageDoesNotBlockOtherPages() {
+        let app = launch("reviews-restricted")
+        XCTAssertTrue(app.staticTexts["Set up GitHub access"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["open-access-settings"].exists)
+        app.buttons["nav-authored"].click()
+        XCTAssertTrue(app.buttons["pr-10"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["open-access-settings"].exists)
+        app.buttons["nav-reviews"].click()
+        app.buttons["reauthorize-github"].click()
+        XCTAssertTrue(app.staticTexts["device-code"].waitForExistence(timeout: 5))
+        app.buttons["cancel-connection"].click()
+        XCTAssertTrue(app.staticTexts["Set up GitHub access"].waitForExistence(timeout: 5))
+    }
+    func testConnectionGuideOnBothPagesAndCopyCode() {
+        let app = launch("disconnected")
+        XCTAssertTrue(app.buttons["connect-github"].waitForExistence(timeout: 10))
+        app.buttons["nav-authored"].click()
+        XCTAssertTrue(app.staticTexts["Connect GitHub to get started"].exists)
+        XCTAssertFalse(app.textFields["pr-filter"].exists)
+        app.buttons["connect-github"].click()
+        XCTAssertTrue(app.buttons["copy-device-code"].waitForExistence(timeout: 5))
+        app.buttons["copy-device-code"].click()
+        XCTAssertEqual(app.buttons["copy-device-code"].label, "Copied")
+        XCTAssertTrue(app.buttons["open-device-github"].exists)
+        app.buttons["nav-reviews"].click()
+        XCTAssertTrue(app.staticTexts["device-code"].exists)
+    }
+    func testEmptyPartialAccessDoesNotClaimAllCaughtUp() {
+        let app = launch("partial-empty")
+        XCTAssertTrue(app.staticTexts["No accessible pull requests in this view"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["show-access-help"].exists)
+        XCTAssertFalse(app.staticTexts["You're all caught up"].exists)
+    }
+    func testAccessGuidanceScreenshots() {
+        for scenario in ["disconnected", "device-code", "expired", "reviews-restricted", "partial"] {
+            let app = launch(scenario == "device-code" ? "disconnected" : scenario)
+            let element = scenario == "partial" ? app.buttons["show-access-help"] :
+                scenario == "reviews-restricted" ? app.buttons["check-github-access"] : app.buttons["connect-github"]
+            XCTAssertTrue(element.waitForExistence(timeout: 10))
+            if scenario == "device-code" {
+                app.buttons["connect-github"].click()
+                XCTAssertTrue(app.staticTexts["device-code"].waitForExistence(timeout: 5))
+            }
+            let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+            attachment.name = "GitHub access — \(scenario)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            app.terminate()
+        }
     }
     func testFocusScreenshot() {
         let app = launch("connected")

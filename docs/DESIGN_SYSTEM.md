@@ -138,3 +138,9 @@ A felhasználó a korábbi Focus látvány SwiftUI-megvalósítását választot
 Nincs login oldal. A munkafelület kapcsolódás nélkül is elérhető. A Connect GitHub panelen az eszközkód másolható, a jóváhagyó oldal megnyitható és a folyamat megszakítható. A nem konfigurált client ID, elutasított/lejárt kód és Keychain-hiba szöveges jelzést kap. A mentett PR-lista hálózati hiba esetén elavultságjelzéssel megmarad.
 
 A navigáció, csoportok, kereső és PR-linkek billentyűzettel kezelhetők; az egyedi vezérlők hozzáférhető neveket és kijelölési állapotokat kapnak. Az app a macOS saját billentyűzetfókuszát használja. Command-R mindkét PR-listát frissíti. A kizárólag asztali appnál az érintőképernyős előírás nem alkalmazandó.
+
+## GitHub-hozzáférés helyreállítása
+
+Mindkét PR-aloldalon közös hozzáférési útmutató jelenik meg kapcsolat nélkül, illetve lejárt vagy visszavont tokennél. A fő művelet a csatlakozás/újracsatlakozás; a rövid lépések böngészős jóváhagyást írnak le. Az egyszer használatos kód másolható, a folyamat megszakítható, elutasítás vagy lejárat után újrapróbálható. A hosszabb tartalom görgethető, az elsődleges művelet a lépések előtt helyezkedik el.
+
+Teljes jogosultsághibánál csak az érintett oldal kap szervezeti/repository/SSO útmutatót, GitHub-beállítási linket és újraellenőrzést. Részleges hozzáférésnél a PR-lista megmarad; egy kompakt jelzésből külön natív sheetben nyitható a részletes segítség. Az útmutató különbséget tesz az alkalmazás engedélyezése, a szervezeti jóváhagyás és az SSO között. A kliensazonosító egyszeri fejlesztői konfiguráció, nem végfelhasználói beállítás.
