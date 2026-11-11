@@ -27,6 +27,7 @@ private struct FixtureGitHub: GitHubServing {
     func inbox(token: String, login: String, page: PRPage) async throws -> Inbox {
         if scenario == "error" || (scenario == "reviews-restricted" && page == .reviews) { throw BuddyError.permissions }
         if scenario == "empty" { return Inbox(pulls: []) }
+        if scenario == "partial-empty" { return Inbox(pulls: [], accessIssues: [.teamMembership]) }
         let titles = page == .reviews ? ["Improve GitHub synchronization", "Update local storage", "Fix review request timing"] : ["My native macOS feature"]
         let pulls = titles.enumerated().map { index, title in
             PullRequest(id: Int64(index + 1), number: index + 10, title: title,

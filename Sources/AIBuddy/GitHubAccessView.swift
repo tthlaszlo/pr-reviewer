@@ -121,7 +121,7 @@ struct GitHubPermissionView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Some GitHub access is missing", systemImage: "lock.shield")
                 .font(Focus.font(13, weight: .semibold)).foregroundStyle(Focus.accentText)
-            Text("Available PRs are shown below. Set up organization, repository or team access to see the rest.")
+            Text("This list includes only accessible PRs. Set up organization, repository or team access to see restricted requests.")
                 .font(Focus.font(12)).foregroundStyle(Focus.muted).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Button("Set up access") { showingHelp = true }
@@ -131,7 +131,7 @@ struct GitHubPermissionView: View {
         }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
             .background(Focus.surface).clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Focus.border))
-        }
+    }
     private var fullPanel: some View {
         VStack(alignment: .leading, spacing: 14) {
             Label(fullPage ? "Set up GitHub access" : "Some GitHub access is missing", systemImage: "lock.shield")
@@ -162,7 +162,7 @@ struct GitHubPermissionView: View {
         }.padding(fullPage ? 24 : 18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Focus.surface).clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Focus.border))
-        }
+    }
     @ViewBuilder private var actions: some View {
         Button { NSWorkspace.shared.open(workspace.applicationSettingsURL) } label: {
             Label("Open GitHub access settings", systemImage: "arrow.up.right")

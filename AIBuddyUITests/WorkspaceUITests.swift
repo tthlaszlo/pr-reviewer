@@ -104,6 +104,12 @@ final class WorkspaceUITests: XCTestCase {
         app.buttons["nav-reviews"].click()
         XCTAssertTrue(app.staticTexts["device-code"].exists)
     }
+    func testEmptyPartialAccessDoesNotClaimAllCaughtUp() {
+        let app = launch("partial-empty")
+        XCTAssertTrue(app.staticTexts["No accessible pull requests in this view"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["show-access-help"].exists)
+        XCTAssertFalse(app.staticTexts["You're all caught up"].exists)
+    }
     func testAccessGuidanceScreenshots() {
         for scenario in ["disconnected", "device-code", "expired", "reviews-restricted", "partial"] {
             let app = launch(scenario == "device-code" ? "disconnected" : scenario)

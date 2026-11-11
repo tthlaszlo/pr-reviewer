@@ -143,8 +143,10 @@ struct WorkspaceView: View {
         } else if inbox == nil {
             statePanel("Pull requests could not be loaded", detail: "Use Refresh to try again.", symbol: "exclamationmark.triangle")
         } else if rows.isEmpty {
-            statePanel(query.isEmpty ? "You're all caught up" : "No matching pull requests",
-                       detail: query.isEmpty ? "There are no open pull requests in this view." : "Try a different title, repository or author.", symbol: "checkmark.circle")
+            let missingAccess = !(inbox?.accessIssues.isEmpty ?? true)
+            statePanel(query.isEmpty ? (missingAccess ? "No accessible pull requests in this view" : "You're all caught up") : "No matching pull requests",
+                       detail: query.isEmpty ? (missingAccess ? "Some requests may be missing until GitHub access is restored." : "There are no open pull requests in this view.") : "Try a different title, repository or author.",
+                       symbol: missingAccess && query.isEmpty ? "lock.shield" : "checkmark.circle")
         } else {
             ScrollView {
                 LazyVStack(spacing: 0) {
