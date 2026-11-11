@@ -6,20 +6,15 @@ final class SettingsUITests: XCTestCase {
     private var settings: XCUIElement {
         app.windows.containing(.staticText, identifier: "settings-heading").firstMatch
     }
-    private func cleanup() {
-        guard let app, app.state == .runningForeground || app.state == .runningBackground else { return }
-        if settings.exists { settings.buttons[XCUIIdentifierCloseWindow].click() }
-        app.terminate()
-    }
     private func launch(_ scenario: String, shortcut: Bool = false) {
         app = XCUIApplication()
         app.launchEnvironment["AI_BUDDY_UI_TEST"] = scenario
         app.launch()
-        addTeardownBlock { [weak self] in await self?.cleanup() }
         XCTAssertTrue(app.buttons["nav-settings"].waitForExistence(timeout: 10))
         if shortcut { app.typeKey(",", modifierFlags: .command) }
         else { app.buttons["nav-settings"].click() }
         XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.windows.count, 1)
     }
     private func assertStatus(_ value: String, file: StaticString = #filePath, line: UInt = #line) {
         let status = settings.staticTexts["github-status"]
@@ -41,7 +36,7 @@ final class SettingsUITests: XCTestCase {
         settings.sheets.buttons["Remove"].click()
         assertStatus("Not connected")
         XCTAssertFalse(settings.staticTexts["github-account"].exists)
-        settings.buttons[XCUIIdentifierCloseWindow].click()
+        app.buttons["nav-reviews"].click()
         XCTAssertTrue(app.buttons["connect-github"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["pr-10"].exists)
     }
@@ -62,7 +57,7 @@ final class SettingsUITests: XCTestCase {
             attachment.name = "Settings — \(scenario)"
             attachment.lifetime = .keepAlways
             add(attachment)
-            settings.buttons[XCUIIdentifierCloseWindow].click()
+            app.buttons["nav-reviews"].click()
             app.terminate()
         }
     }

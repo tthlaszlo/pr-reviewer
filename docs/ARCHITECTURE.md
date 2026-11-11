@@ -32,6 +32,6 @@ Partial permission failures are typed `GitHubAccessIssue` values in the Inbox, s
 
 ## Native Settings
 
-The app defines a SwiftUI Settings scene using the same Workspace instance as every PR window. SettingsLink in the sidebar and the standard macOS Settings menu/keyboard shortcut open that single settings window. Connection status is derived centrally from startup, authorization, refresh, access issues and removal results; it is not copied into separate UI state. The view exposes account identity and sync time, never the credential.
+Settings is a page in the existing WorkspaceView, backed by the same Workspace instance as the PR pages. The sidebar button and the Settings menu/keyboard shortcut select this page without opening another window. A focused-scene action routes the menu command to the active workspace window. Connection status is derived centrally from startup, authorization, refresh, access issues and removal results; it is not copied into separate UI state. The view exposes account identity and sync time, never the credential.
 
 Local removal uses the existing generation-based request invalidation and clears Keychain/cache independently. Any cleanup failure remains visible as removalIncomplete, and removal can be retried even after the active in-memory user has been cleared. GitHub-side authorization revocation remains a separate, explicitly linked action.

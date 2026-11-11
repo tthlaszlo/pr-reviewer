@@ -66,6 +66,6 @@ If only a repository, organization or team is inaccessible, available PRs remain
 
 ## Settings
 
-Open **Settings** from the sidebar or choose **AI Buddy → Settings…** (`⌘,`). The native Settings window shows the connected GitHub account, current connection/access status and last successful PR sync. You can check access, reconnect through the existing device-code flow, or open the OAuth app's GitHub authorization settings. No token value is displayed.
+Open **Settings** from the sidebar or choose **AI Buddy → Settings…** (`⌘,`). Settings opens inside the existing workspace window. The page shows the connected GitHub account, current connection/access status and last successful PR sync. You can check access, reconnect through the existing device-code flow, or open the OAuth app's GitHub authorization settings. No token value is displayed.
 
 **Remove GitHub connection** asks for confirmation and deletes the local Keychain credential and all cached PR snapshots. Both PR pages update immediately. This does not revoke authorization on GitHub; use **Manage authorization on GitHub** for that. A failed Keychain/cache cleanup is shown as **Removal incomplete** with a retry action.

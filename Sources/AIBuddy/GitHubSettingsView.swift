@@ -95,7 +95,7 @@ struct GitHubSettingsView: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Focus.border))
             }.padding(24)
         }
-        .frame(width: 680, height: 640)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .font(Focus.font(14)).foregroundStyle(Focus.text).background(Focus.background)
         .alert("Remove GitHub connection?", isPresented: $confirmingRemoval) {
             Button("Cancel", role: .cancel) { }

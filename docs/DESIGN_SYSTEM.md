@@ -147,7 +147,7 @@ Teljes jogosultsághibánál csak az érintett oldal kap szervezeti/repository/S
 
 ## Settings és GitHub-kapcsolat
 
-Az oldalsáv Settings menüpontja és a macOS alkalmazásmenü Settings művelete ugyanazt a natív beállítási ablakot nyitja; a rendszer szokásos Command-, billentyűparancsa is működik. Az ablak a világos Focus színeit és Inter betűtípusát használja.
+Az oldalsáv Settings menüpontja és a macOS alkalmazásmenü Settings művelete a fő alkalmazásablak Settings oldalára vált, új ablak nyitása nélkül; a rendszer szokásos Command-, billentyűparancsa is működik. Az oldal a világos Focus színeit és Inter betűtípusát használja.
 
 A GitHub-panel a fiókot, az összes PR-oldalból összesített aktuális kapcsolati állapotot és az utolsó sikeres szinkront mutatja. Külön állapot a csatlakoztatás, ellenőrzés, leválasztott kapcsolat, lejárt engedély, részleges hozzáférés, egyéb hiba és a hiányzó buildkonfiguráció. A token értéke soha nem jelenik meg.
 
