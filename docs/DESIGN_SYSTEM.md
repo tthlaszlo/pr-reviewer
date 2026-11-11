@@ -70,7 +70,7 @@ A navigációban a halvány kiemelési háttér jelzi az aktív helyet. Az alkal
 
 ## PR-lista és csoportok
 
-A Pull requests navigáció két aloldala: **Review requests** (személyes és csapatos review-kérések), illetve **My pull requests** (a felhasználó saját nyitott PR-jei). Mindkettő külön URL-lel és aktív navigációs jelöléssel rendelkezik. A három review-csoport csak a Review requests aloldalon jelenik meg. A Publishing, Results, AI agents és Review settings menüpontok nem jelennek meg.
+A Pull requests navigáció két aloldala: **Review requests** (személyes és csapatos review-kérések), illetve **My pull requests** (a felhasználó saját nyitott PR-jei). Mindkettő külön natív navigációs állapottal és aktív jelöléssel rendelkezik. A három review-csoport csak a Review requests aloldalon jelenik meg. A Publishing, Results, AI agents és Review settings menüpontok nem jelennek meg.
 
 A három kért csoport:
 
@@ -130,3 +130,11 @@ A képernyőnkénti műveletek számát a tényleges feladat indokolja. Az aktu�
 - A Focus irányt, a világos alapértelmezést és a 15 px-es külső lekerekítést csak kifejezett felhasználói kérésre változtassuk meg.
 - A felhasználó által jóváhagyott módosításokat ebben a dokumentumban is vezessük át.
 - A design system nem dönt technológiai keretrendszerről, és nem bővíti automatikusan a fejlesztés funkcionális hatókörét.
+
+## Natív macOS-megvalósítás
+
+A felhasználó a korábbi Focus látvány SwiftUI-megvalósítását választotta. A méreteket pontokban alkalmazzuk: világos alapértelmezés, Inter (az apphoz csomagolt SIL OFL betűtípus), a fenti színek és kompakt listák. A tartalom külső kerete 15 pt lekerekítésű; az ablak címsorát és ablakvezérlőit a macOS adja. Az ikonok egységes SF Symbols vonalas ikonok.
+
+Nincs login oldal. A munkafelület kapcsolódás nélkül is elérhető. A Connect GitHub panelen az eszközkód másolható, a jóváhagyó oldal megnyitható és a folyamat megszakítható. A nem konfigurált client ID, elutasított/lejárt kód és Keychain-hiba szöveges jelzést kap. A mentett PR-lista hálózati hiba esetén elavultságjelzéssel megmarad.
+
+A navigáció, csoportok, kereső és PR-linkek billentyűzettel kezelhetők; az egyedi vezérlők hozzáférhető neveket és kijelölési állapotokat kapnak. Az app a macOS saját billentyűzetfókuszát használja. Command-R mindkét PR-listát frissíti. A kizárólag asztali appnál az érintőképernyős előírás nem alkalmazandó.

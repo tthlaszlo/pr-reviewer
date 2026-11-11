@@ -1,9 +1,15 @@
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+Config/Local.xcconfig
+.env
+.env.*
+.DS_Store
+# Local artifacts/data from the retired web version. Do not commit or delete user data.
 node_modules/
 dist/
 coverage/
 playwright-report/
 test-results/
-.env
-.env.*
-!.env.example
-.DS_Store

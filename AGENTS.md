@@ -8,10 +8,11 @@
 
 ## Fejlesztési és futtatási környezet
 
-- A fejlesztés helyben, Docker-konténerekben történjen.
-- Legyen Docker Compose-fájl, amellyel a helyi környezet egyszerűen indítható és leállítható.
-- A fejlesztési parancsok és tesztek Dockerben is futtathatók legyenek; a szükséges lépéseket dokumentáld.
-- Az éles termék a Sevalla platformra kerül. Az alkalmazás és a konténeres futtatási konfiguráció kialakításakor ezt vedd figyelembe.
+- Kizárólag helyben futó natív macOS-alkalmazás, Apple Silicon ARM64 célplatformmal; minimum macOS 14.
+- Swift + SwiftUI, külön Swift Package az alkalmazáslogikához és Xcode-projekt az apphoz/UI-tesztekhez.
+- A fejlesztés és tesztelés macOS-en történik. Docker és Sevalla már nem része a terméknek.
+- A tokeneket macOS Keychainben, a PR-gyorsítótárat helyi SQLite-adatbázisban tároljuk. Titkot ne commitolj vagy naplózz.
+- A régi webverzió PostgreSQL-volume-jait és helyi titkait ne töröld az átálláskor.
 
 ## Kötelező design system
 
@@ -45,3 +46,11 @@
 - A korábbi technológiai és GitHub-bejelentkezési javaslatokat ne kezeld automatikusan végleges döntésként.
 
 - A Pull requests oldal két aloldala: a személyes/csapatos review-kérések és a felhasználó saját nyitott PR-jei. A három review-csoport az első aloldalon marad.
+
+## Natív alkalmazás és GitHub-kapcsolat
+
+- Nincs alkalmazásszintű bejelentkezés, Google-login, saját fiók vagy szerveroldali munkamenet.
+- A munkafelület indítás után azonnal elérhető; GitHubhoz saját OAuth device flow-val csatlakozunk.
+- Egy GitHub.com-fiók támogatott. Client secret nem csomagolható a desktop alkalmazásba.
+- A Focus korábbi látványa megmarad: Inter, világos felület, szemantikus színek, kompakt listák; natív macOS ablakvezérlők.
+- A Swift-teszteket és az Xcode-os UI-teszteket futtasd a dokumentált parancsokkal. Hiányzó Xcode vagy OAuth-konfiguráció esetén pontosan jelezd az ellenőrzés korlátját.
