@@ -57,8 +57,8 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Pull requests could not be loaded"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["refresh"].isEnabled)
         app.buttons["disconnect"].click()
-        XCTAssertTrue(app.dialogs.firstMatch.waitForExistence(timeout: 5))
-        app.dialogs.buttons["Disconnect"].click()
+        XCTAssertTrue(app.sheets.firstMatch.waitForExistence(timeout: 5))
+        app.sheets.firstMatch.buttons["Disconnect"].click()
         XCTAssertTrue(app.buttons["connect-github"].waitForExistence(timeout: 5))
     }
     func testFocusScreenshot() {
