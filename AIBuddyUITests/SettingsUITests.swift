@@ -4,7 +4,7 @@ import XCTest
 final class SettingsUITests: XCTestCase {
     private var app: XCUIApplication!
     private var settings: XCUIElement {
-        app.windows.containing(.staticText, identifier: "settings-heading").firstMatch
+        app.windows.firstMatch
     }
     private func launch(_ scenario: String, shortcut: Bool = false) {
         app = XCUIApplication()
@@ -13,7 +13,7 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["nav-settings"].waitForExistence(timeout: 10))
         if shortcut { app.typeKey(",", modifierFlags: .command) }
         else { app.buttons["nav-settings"].click() }
-        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        XCTAssertTrue(settings.staticTexts["settings-heading"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.windows.count, 1)
     }
     private func assertStatus(_ value: String, file: StaticString = #filePath, line: UInt = #line) {
