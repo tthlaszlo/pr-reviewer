@@ -144,3 +144,11 @@ A navigáció, csoportok, kereső és PR-linkek billentyűzettel kezelhetők; az
 Mindkét PR-aloldalon közös hozzáférési útmutató jelenik meg kapcsolat nélkül, illetve lejárt vagy visszavont tokennél. A fő művelet a csatlakozás/újracsatlakozás; a rövid lépések böngészős jóváhagyást írnak le. Az egyszer használatos kód másolható, a folyamat megszakítható, elutasítás vagy lejárat után újrapróbálható. A hosszabb tartalom görgethető, az elsődleges művelet a lépések előtt helyezkedik el.
 
 Teljes jogosultsághibánál csak az érintett oldal kap szervezeti/repository/SSO útmutatót, GitHub-beállítási linket és újraellenőrzést. Részleges hozzáférésnél a PR-lista megmarad; egy kompakt jelzésből külön natív sheetben nyitható a részletes segítség. Az útmutató különbséget tesz az alkalmazás engedélyezése, a szervezeti jóváhagyás és az SSO között. A kliensazonosító egyszeri fejlesztői konfiguráció, nem végfelhasználói beállítás.
+
+## Settings és GitHub-kapcsolat
+
+Az oldalsáv Settings menüpontja és a macOS alkalmazásmenü Settings művelete ugyanazt a natív beállítási ablakot nyitja; a rendszer szokásos Command-, billentyűparancsa is működik. Az ablak a világos Focus színeit és Inter betűtípusát használja.
+
+A GitHub-panel a fiókot, az összes PR-oldalból összesített aktuális kapcsolati állapotot és az utolsó sikeres szinkront mutatja. Külön állapot a csatlakoztatás, ellenőrzés, leválasztott kapcsolat, lejárt engedély, részleges hozzáférés, egyéb hiba és a hiányzó buildkonfiguráció. A token értéke soha nem jelenik meg.
+
+A kapcsolat ellenőrizhető, újracsatlakoztatható, GitHubon kezelhető, illetve helyben törölhető. A helyi törlés megerősítést kér, és szövegesen különbözik a GitHubon adott engedély visszavonásától. Sikertelen Keychain- vagy cache-törlésnél a státusz Removal incomplete; újrapróbálható, nem mutathat sikeres leválasztást. Ez alkalmazásszintű Settings, nem a későbbi Review settings funkció.

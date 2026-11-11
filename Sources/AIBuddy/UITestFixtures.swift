@@ -7,16 +7,24 @@ enum UITestFixtures {
     @MainActor static func workspace(scenario: String) -> Workspace {
         Workspace(configured: scenario != "unconfigured", github: FixtureGitHub(scenario: scenario),
                   authorization: FixtureAuthorization(),
-                  credentials: FixtureCredentials(connected: scenario != "disconnected" && scenario != "unconfigured"),
+                  credentials: FixtureCredentials(connected: scenario != "disconnected" && scenario != "unconfigured",
+                                                  failDelete: scenario == "removal-error"),
                   cache: SQLiteInboxStore(path: ":memory:"))
     }
 }
 private actor FixtureCredentials: CredentialStoring {
     var value: Credential?
-    init(connected: Bool) { value = connected ? Credential(user: GitHubUser(id: 1, login: "local-developer"), token: "fixture") : nil }
+    let failDelete: Bool
+    init(connected: Bool, failDelete: Bool) {
+        self.failDelete = failDelete
+        value = connected ? Credential(user: GitHubUser(id: 1, login: "local-developer"), token: "fixture") : nil
+    }
     func load() -> Credential? { value }
     func save(_ credential: Credential) { value = credential }
-    func delete() { value = nil }
+    func delete() throws {
+        if failDelete { throw BuddyError.keychain(-1) }
+        value = nil
+    }
 }
 private struct FixtureGitHub: GitHubServing {
     let scenario: String
@@ -27,6 +35,7 @@ private struct FixtureGitHub: GitHubServing {
     func inbox(token: String, login: String, page: PRPage) async throws -> Inbox {
         if scenario == "error" || (scenario == "reviews-restricted" && page == .reviews) { throw BuddyError.permissions }
         if scenario == "empty" { return Inbox(pulls: []) }
+        if scenario == "network-error" { throw BuddyError.unavailable }
         if scenario == "partial-empty" { return Inbox(pulls: [], accessIssues: [.teamMembership]) }
         let titles = page == .reviews ? ["Improve GitHub synchronization", "Update local storage", "Fix review request timing"] : ["My native macOS feature"]
         let pulls = titles.enumerated().map { index, title in

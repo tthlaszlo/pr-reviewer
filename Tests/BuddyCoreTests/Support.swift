@@ -38,7 +38,7 @@ actor MemoryCredentials: CredentialStoring {
     func load() -> Credential? { value }
     func save(_ credential: Credential) { value = credential }
     func delete() throws { if failDelete { throw BuddyError.keychain(-1) }; value = nil }
-    func setFailDelete() { failDelete = true }
+    func setFailDelete(_ value: Bool = true) { failDelete = value }
 }
 struct FixedAuthorization: GitHubAuthorization {
     var error: BuddyError?

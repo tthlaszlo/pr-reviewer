@@ -52,6 +52,11 @@ struct WorkspaceView: View {
                 .accessibilityAddTraits(page == destination ? [.isSelected] : [])
             }
             Spacer()
+            SettingsLink {
+                Label("Settings", systemImage: "gearshape")
+                    .font(Focus.font(12, weight: .medium))
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 10)
+            }.buttonStyle(.plain).accessibilityIdentifier("nav-settings")
             Rectangle().fill(Focus.border).frame(height: 1).padding(.vertical, 16)
             if let user = workspace.user {
                 Label(user.login, systemImage: "person.crop.circle").font(Focus.font(12, weight: .medium))

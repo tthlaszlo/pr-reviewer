@@ -38,5 +38,11 @@ struct AIBuddyApp: App {
                     .disabled(workspace.user == nil)
             }
         }
+        Settings {
+            GitHubSettingsView(workspace: workspace)
+                .preferredColorScheme(.light)
+                .tint(Focus.accentText)
+                .task { await workspace.start() }
+        }
     }
 }
