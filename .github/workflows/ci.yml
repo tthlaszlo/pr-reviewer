@@ -19,3 +19,19 @@ jobs:
         run: test "$(uname -m)" = arm64
       - name: Swift tests, UI tests and Release app
         run: scripts/verify.sh
+      - name: Export UI verification screenshots
+        if: always()
+        run: |
+          for result in .build/UITests-*.xcresult; do
+            if [[ -d "$result" ]]; then
+              xcrun xcresulttool export attachments --path "$result" --output-path .build/ui-attachments
+            fi
+          done
+      - name: Keep UI verification evidence briefly
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-ui-verification
+          path: .build/ui-attachments
+          retention-days: 1
+          if-no-files-found: ignore

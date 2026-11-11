@@ -57,7 +57,7 @@ struct WorkspaceView: View {
                 Label(user.login, systemImage: "person.crop.circle").font(Focus.font(12, weight: .medium))
                 Text("Connected to GitHub").font(Focus.font(11)).foregroundStyle(Focus.muted).padding(.top, 5)
                 Button("Disconnect GitHub") { confirmDisconnect = true }
-                    .font(Focus.font(11)).buttonStyle(.link).padding(.top, 10)
+                    .font(Focus.font(11)).foregroundStyle(Focus.accentText).buttonStyle(.plain).padding(.top, 10)
                     .disabled(workspace.disconnecting)
                     .accessibilityIdentifier("disconnect")
             } else {
@@ -104,11 +104,15 @@ struct WorkspaceView: View {
             if let error = workspace.connectionError { banner(error, warning: true) }
             if !workspace.configured {
                 banner(BuddyError.configuration.localizedDescription, warning: true)
+                Button("Connect GitHub") { workspace.connect() }
+                    .buttonStyle(FocusButtonStyle(primary: true)).disabled(true)
+                    .accessibilityIdentifier("connect-github")
             } else if let code = workspace.deviceCode {
                 Text("Enter this code on GitHub").font(Focus.font(12))
                 HStack(spacing: 16) {
                     Text(code.user_code).font(.system(size: 24, weight: .semibold, design: .monospaced))
-                        .textSelection(.enabled).accessibilityIdentifier("device-code")
+                        .textSelection(.enabled).accessibilityLabel("GitHub device code")
+                        .accessibilityValue(code.user_code).accessibilityIdentifier("device-code")
                     Button("Copy code") {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(code.user_code, forType: .string)

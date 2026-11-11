@@ -20,8 +20,8 @@ private final class NoRedirects: NSObject, URLSessionTaskDelegate, Sendable {
 }
 public final class URLSessionTransport: HTTPTransport, Sendable {
     private let session: URLSession
-    public init() {
-        let config = URLSessionConfiguration.ephemeral
+    public convenience init() { self.init(configuration: .ephemeral) }
+    init(configuration config: URLSessionConfiguration) {
         config.timeoutIntervalForRequest = 20
         config.timeoutIntervalForResource = 30
         config.httpCookieStorage = nil

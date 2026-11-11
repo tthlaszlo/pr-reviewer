@@ -32,7 +32,7 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(app.buttons["connect-github"].waitForExistence(timeout: 10))
         app.buttons["connect-github"].click()
         XCTAssertTrue(app.staticTexts["device-code"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts["device-code"].label, "ABCD-EFGH")
+        XCTAssertEqual(app.staticTexts["device-code"].value as? String, "ABCD-EFGH")
         app.buttons["cancel-connection"].click()
         XCTAssertTrue(app.buttons["connect-github"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["device-code"].exists)
@@ -40,6 +40,7 @@ final class WorkspaceUITests: XCTestCase {
     func testUnconfiguredAppStillShowsWorkspace() {
         let app = launch("unconfigured")
         XCTAssertTrue(app.buttons["nav-reviews"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["connect-github"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["connect-github"].isEnabled)
         XCTAssertTrue(app.staticTexts["Connect GitHub to get started"].exists)
     }
