@@ -16,6 +16,50 @@ public final class Workspace: ObservableObject {
     @Published public private(set) var starting = true
     @Published public private(set) var disconnecting = false
     @Published public private(set) var removalIncomplete = false
+    @Published public private(set) var selectedPull: PullRequest?
+    @Published public private(set) var reviewHistory: ReviewHistory?
+    @Published public private(set) var reviewsLoading = false
+    @Published public private(set) var reviewsError: String?
+    private var reviewsVersion = 0
+    private var reviewsTask: Task<Void, Never>?
+
+    public func openReviews(_ pull: PullRequest) {
+        closeReviews()
+        guard let credential, !connecting, !disconnecting, !needsReconnection else { return }
+        selectedPull = pull
+        reviewsLoading = true
+        let version = reviewsVersion
+        let accountVersion = generation
+        reviewsTask = Task { [weak self] in
+            guard let self else { return }
+            defer { if version == reviewsVersion { reviewsLoading = false } }
+            do {
+                let history = try await github.reviews(token: credential.token, pull: pull)
+                guard version == reviewsVersion, accountVersion == generation, !Task.isCancelled else { return }
+                reviewHistory = history
+            } catch is CancellationError { }
+            catch {
+                guard version == reviewsVersion, accountVersion == generation, !Task.isCancelled else { return }
+                reviewsError = message(error)
+                if error as? BuddyError == .unauthorized {
+                    generation += 1
+                    stopRefreshes()
+                    needsReconnection = true
+                    for page in PRPage.allCases {
+                        errors[page] = message(error)
+                        if inboxes[page] != nil { stale.insert(page) }
+                    }
+                }
+            }
+        }
+    }
+    public func closeReviews() {
+        reviewsVersion += 1
+        reviewsTask?.cancel(); reviewsTask = nil
+        selectedPull = nil; reviewHistory = nil; reviewsError = nil; reviewsLoading = false
+    }
+    func waitForReviews() async { await reviewsTask?.value }
+
     public let configured: Bool
     public let applicationSettingsURL: URL
     private let github: any GitHubServing
@@ -129,6 +173,7 @@ public final class Workspace: ObservableObject {
         }
     }
     private func stopRefreshes() {
+        closeReviews()
         for task in refreshTasks.values { task.cancel() }
         refreshTasks = [:]
         refreshing = []

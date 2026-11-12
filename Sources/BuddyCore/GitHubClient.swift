@@ -2,6 +2,7 @@ import Foundation
 
 public protocol GitHubServing: Sendable {
     func user(token: String) async throws -> GitHubUser
+    func reviews(token: String, pull: PullRequest) async throws -> ReviewHistory
     func inbox(token: String, login: String, page: PRPage) async throws -> Inbox
 }
 public struct GitHubClient: GitHubServing {
@@ -42,6 +43,19 @@ public struct GitHubClient: GitHubServing {
             if batch.count < pageSize { return (result, false) }
         }
         return (result, true)
+    }
+    public func reviews(token: String, pull: PullRequest) async throws -> ReviewHistory {
+        let parts = pull.repository.split(separator: "/", omittingEmptySubsequences: false)
+        let valid = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._"))
+        guard pull.number > 0, parts.count == 2,
+              parts.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." && $0.unicodeScalars.allSatisfy(valid.contains) }) else {
+            throw BuddyError.invalidResponse
+        }
+        let path = "/repos/\(pull.repository)/pulls/\(pull.number)"
+        let (reviews, partialReviews): ([SubmittedReview], Bool) = try await list("\(path)/reviews", token: token)
+        let (comments, partialComments): ([ReviewComment], Bool) = try await list("\(path)/comments", token: token)
+        return ReviewHistory(reviews: reviews.filter { $0.state != "PENDING" && $0.submittedAt != nil },
+                             comments: comments, partial: partialReviews || partialComments)
     }
     public func inbox(token: String, login: String, page: PRPage) async throws -> Inbox {
         var warnings: Set<String> = []

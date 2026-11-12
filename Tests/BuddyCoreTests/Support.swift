@@ -54,6 +54,7 @@ actor FakeGitHub: GitHubServing {
     var suspended = false
     var continuation: CheckedContinuation<Void, Never>?
     func user(token: String) -> GitHubUser { identity }
+    func reviews(token: String, pull: PullRequest) async throws -> ReviewHistory { ReviewHistory() }
     func inbox(token: String, login: String, page: PRPage) async throws -> Inbox {
         inboxCalls.append(page)
         if suspended { await withCheckedContinuation { continuation = $0 } }

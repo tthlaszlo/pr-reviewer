@@ -3,7 +3,7 @@
 A local macOS workspace for developer tools, starting with GitHub pull requests. Built with Swift and SwiftUI for **Apple Silicon, macOS 14+**. No application login or hosted backend.
 
 - **Review requests:** personal/team invitations grouped into awaiting review, reviewed/waiting and requested again.
-- **My pull requests:** your own open PRs, independently fetched.
+- **My pull requests:** your own open PRs, independently fetched. Click a PR to read submitted reviews and code comments inside AI Buddy, with refresh and an Open on GitHub link.
 - Filter, manual refresh, draft/review/new-commit badges and visible partial-result warnings.
 - Local SQLite cache and macOS Keychain credentials. Cached data remains visible with a stale indicator when GitHub is unavailable.
 

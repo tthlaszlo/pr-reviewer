@@ -54,6 +54,7 @@ struct SettingsTests {
     @Test func partialAccessShowsLimitedStatusWithoutHardError() async {
         struct Partial: GitHubServing {
             func user(token: String) async throws -> GitHubUser { GitHubUser(id: 1, login: "lacko") }
+            func reviews(token: String, pull: PullRequest) async throws -> ReviewHistory { ReviewHistory() }
             func inbox(token: String, login: String, page: PRPage) async throws -> Inbox {
                 Inbox(pulls: [], accessIssues: [.teamMembership])
             }

@@ -27,6 +27,52 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertFalse(app.buttons["group-waiting"].exists)
         XCTAssertFalse(app.staticTexts["No matching pull requests"].exists)
     }
+    func testMyPullRequestReviewsAndBackPreserveFilter() {
+        let app = launch("connected")
+        XCTAssertTrue(app.buttons["nav-authored"].waitForExistence(timeout: 10))
+        app.buttons["nav-authored"].click()
+        let pull = app.buttons["pr-10"]
+        XCTAssertTrue(pull.waitForExistence(timeout: 10))
+        app.textFields["pr-filter"].click()
+        app.textFields["pr-filter"].typeText("native")
+        pull.click()
+        XCTAssertTrue(app.staticTexts["Looks good to me!"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Approved"].exists)
+        XCTAssertTrue(app.staticTexts["Changes requested"].exists)
+        XCTAssertTrue(app.staticTexts["This can fail when offline."].exists)
+        XCTAssertTrue(app.staticTexts["Sources/Client.swift:42"].exists)
+        app.buttons["refresh-reviews"].click()
+        XCTAssertTrue(app.staticTexts["Looks good to me!"].waitForExistence(timeout: 5))
+        let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+        attachment.name = "My pull request reviews"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        app.buttons["back-to-my-prs"].click()
+        XCTAssertTrue(pull.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textFields["pr-filter"].value as? String, "native")
+    }
+    func testReviewEmptyErrorAndPartialStates() {
+        for scenario in ["reviews-empty", "reviews-error", "reviews-partial"] {
+            let app = launch(scenario)
+            XCTAssertTrue(app.buttons["nav-authored"].waitForExistence(timeout: 10))
+            app.buttons["nav-authored"].click()
+            XCTAssertTrue(app.buttons["pr-10"].waitForExistence(timeout: 10))
+            app.buttons["pr-10"].click()
+            if scenario == "reviews-empty" {
+                XCTAssertTrue(app.staticTexts["No reviews yet"].waitForExistence(timeout: 5))
+            } else if scenario == "reviews-error" {
+                XCTAssertTrue(app.buttons["retry-reviews"].waitForExistence(timeout: 5))
+                app.buttons["retry-reviews"].click()
+                XCTAssertTrue(app.buttons["retry-reviews"].waitForExistence(timeout: 5))
+                XCTAssertFalse(app.staticTexts["No reviews yet"].exists)
+            } else {
+                XCTAssertTrue(app.staticTexts["Review history is incomplete. Open this PR on GitHub to see the full history."].waitForExistence(timeout: 5))
+            }
+            app.buttons["nav-reviews"].click()
+            XCTAssertTrue(app.buttons["group-awaiting"].waitForExistence(timeout: 5))
+            app.terminate()
+        }
+    }
     func testConnectionCodeAndCancellation() {
         let app = launch("disconnected")
         XCTAssertTrue(app.buttons["connect-github"].waitForExistence(timeout: 10))
