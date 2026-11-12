@@ -158,3 +158,11 @@ A kapcsolat ellenőrizhető, újracsatlakoztatható, GitHubon kezelhető, illetv
 A My pull requests sorai az alkalmazáson belüli review-nézetet nyitják meg. A bal oldali navigáció megmarad; a My pull requests visszalépő művelet megőrzi a lista szűrését. A fejlécben a PR címe, repository és szám, Open on GitHub link és Refresh művelet látszik. Nincs új navigációs menüpont.
 
 A review-k időrendben, finom elválasztókkal jelennek meg: reviewer, szöveges státusz, időpont és kijelölhető teljes szöveg. Az üres összefoglaló külön jelzést kap. A Code comments szakaszban szerző, időpont, fájl és sor, valamint a megjegyzés látszik; az elavult sorhivatkozást Outdated jelöli. A szövegek törnek, a tartalom görgethető. A betöltés, hiányzó review, hiányos előzmény és újrapróbálható hiba külön állapot. A nézet kizárólag olvasásra szolgál.
+
+## Formázott reviewer-visszajelzések
+
+A PR-részletek visszajelzései reviewer szerint csoportosulnak. A csoport fejléce görgetéskor rögzített: 40 pt-os indigó monogram vagy botikon, 15 pt-os hangsúlyos teljes GitHub-név, BOT jelzés és review/megjegyzés darabszám. Az összesített darabszámok csak a sikeres betöltés után jelennek meg.
+
+A tartalom legfeljebb 940 pt széles olvasási oszlopba rendeződik. A review és kódmegjegyzés fehér `surface` felületet, 6 pt-os sarkokat és finom `border` szegélyt használ; árnyék nélkül. A kódmegjegyzés külön semleges fejlécben mutatja a teljes fájl- és sorhivatkozást. Az állapot ikonból és feliratból áll: Approved `success`, Changes requested `warning`/`warning-surface`, további állapotok `accent-text`/`sidebar`. Keskeny ablakban a fejléc műveletei és a dátumok külön sorba kerülhetnek.
+
+Az üzenetek natív, kijelölhető Markdown-tartalomként jelennek meg: címsorok, kiemelések, linkek, listák és feladatlisták, idézetek, táblázatok és kódblokkok. Az inline kód monospace betűtípust és `accent-soft` hátteret kap. A kódblokkok és táblázatok vízszintesen görgethetők. A HTML details/summary natív lenyitható rész, kezdetben összecsukva. A képek helyén az alternatív szöveg (például P1) olvasható; külső képek betöltése és HTML futtatása nélkül.

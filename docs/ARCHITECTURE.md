@@ -35,3 +35,7 @@ Partial permission failures are typed `GitHubAccessIssue` values in the Inbox, s
 Settings is a page in the existing WorkspaceView, backed by the same Workspace instance as the PR pages. The sidebar button and the Settings menu/keyboard shortcut select this page without opening another window. A focused-scene action routes the menu command to the active workspace window. Connection status is derived centrally from startup, authorization, refresh, access issues and removal results; it is not copied into separate UI state. The view exposes account identity and sync time, never the credential.
 
 Local removal uses the existing generation-based request invalidation and clears Keychain/cache independently. Any cleanup failure remains visible as removalIncomplete, and removal can be retried even after the active in-memory user has been cleared. GitHub-side authorization revocation remains a separate, explicitly linked action.
+
+## Review message rendering
+
+Review feedback is grouped by case-insensitive author identity, retaining bot-only inline comments and deleted-user fallbacks. The native Focus message view uses a pinned Swift Markdown dependency (and its resolved cmark dependency) to parse Markdown locally into testable block models and attributed inline text. Supported HTML details/summary become disclosures; image alternatives remain readable without fetching remote images. HTML never executes. Code fences retain literal contents, and interactive links are limited to credential-free HTTP(S) URLs. No web renderer or script runtime is embedded.

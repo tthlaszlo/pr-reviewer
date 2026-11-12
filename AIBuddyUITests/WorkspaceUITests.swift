@@ -51,6 +51,27 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(pull.waitForExistence(timeout: 5))
         XCTAssertEqual(app.textFields["pr-filter"].value as? String, "native")
     }
+    func testFormattedReviewDesignAndDisclosure() {
+        let app = launch("reviews-design")
+        XCTAssertTrue(app.buttons["nav-authored"].waitForExistence(timeout: 10))
+        app.buttons["nav-authored"].click()
+        XCTAssertTrue(app.buttons["pr-10"].waitForExistence(timeout: 10))
+        app.buttons["pr-10"].click()
+        XCTAssertTrue(app.staticTexts["greptile-apps[bot]"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["BOT"].exists)
+        XCTAssertTrue(app.staticTexts["Review summary"].exists)
+        XCTAssertTrue(app.staticTexts["P1 Fresh accounts still wait"].exists)
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "<img")).firstMatch.exists)
+        let prompt = app.disclosureTriangles.firstMatch
+        if !prompt.isHittable { app.scrollViews["review-history"].swipeUp() }
+        XCTAssertTrue(prompt.waitForExistence(timeout: 5))
+        prompt.click()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "This is a comment left during a code review.")).firstMatch.waitForExistence(timeout: 5))
+        let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+        attachment.name = "Focus reviewer groups and formatted feedback"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
     func testReviewEmptyErrorAndPartialStates() {
         for scenario in ["reviews-empty", "reviews-error", "reviews-partial"] {
             let app = launch(scenario)
