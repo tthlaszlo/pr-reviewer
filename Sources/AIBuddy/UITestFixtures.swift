@@ -37,6 +37,46 @@ private struct FixtureGitHub: GitHubServing {
         if scenario == "reviews-empty" { return ReviewHistory() }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
+        if scenario == "reviews-design" {
+            let message = #"""
+            <a href="#"><img alt="P1" src="https://example.com/p1.svg" align="top"></a> **Fresh accounts still wait**
+
+            `responsible_user` checks the failed run's user, not the new run's user. When Alice hits a limit and Bob starts work with a fresh grant, Alice's unchanged default keeps Bob's work waiting.
+
+            Pass the new run's responsible user into the check:
+
+            - Compare the selected grant with the recorded grant.
+            - Keep the existing retry behavior for the same account.
+
+            <details><summary>Prompt To Fix With AI</summary>
+
+            ```markdown
+            This is a comment left during a code review.
+            Path: server/src/services/native-runtime/native-startup-retry.ts
+            Line: 55-58
+
+            Use the new run's responsible user when selecting the grant.
+            Preserve the existing behavior for same-account retries.
+            ```
+
+            </details>
+            """#
+            let reviewData = try JSONSerialization.data(withJSONObject: [
+                ["id": 1, "user": ["login": "greptile-apps[bot]"], "state": "COMMENTED",
+                 "body": "## Review summary\nFound **one issue** in the account-switch retry path. The inline feedback below includes a suggested fix.",
+                 "submitted_at": "2026-11-11T10:00:00Z"],
+                ["id": 2, "user": ["login": "anna-dev"], "state": "APPROVED",
+                 "body": "Looks good overall. The **error handling** and `retry` tests are clear.",
+                 "submitted_at": "2026-11-11T11:00:00Z"]
+            ])
+            let commentData = try JSONSerialization.data(withJSONObject: [
+                ["id": 3, "user": ["login": "greptile-apps[bot]"], "body": message,
+                 "path": "server/src/services/native-runtime/native-startup-retry.ts", "line": 58,
+                 "created_at": "2026-11-11T10:00:00Z"]
+            ])
+            return ReviewHistory(reviews: try decoder.decode([SubmittedReview].self, from: reviewData),
+                                 comments: try decoder.decode([ReviewComment].self, from: commentData))
+        }
         let reviews = try decoder.decode([SubmittedReview].self, from: Data(#"[{"id":1,"user":{"login":"reviewer"},"state":"APPROVED","body":"Looks good to me!","submitted_at":"2026-11-11T10:00:00Z"},{"id":2,"user":{"login":"teammate"},"state":"CHANGES_REQUESTED","body":"Please handle the error case.","submitted_at":"2026-11-11T11:00:00Z"}]"#.utf8))
         let comments = try decoder.decode([ReviewComment].self, from: Data(#"[{"id":3,"user":{"login":"teammate"},"body":"This can fail when offline.","path":"Sources/Client.swift","line":42,"created_at":"2026-11-11T11:00:00Z"}]"#.utf8))
         return ReviewHistory(reviews: reviews, comments: comments, partial: scenario == "reviews-partial")
