@@ -27,6 +27,36 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertFalse(app.buttons["group-waiting"].exists)
         XCTAssertFalse(app.staticTexts["No matching pull requests"].exists)
     }
+    func testListDesignCountsFilteringAndFeedbackNavigation() {
+        let app = launch("lists-design")
+        XCTAssertTrue(app.buttons["pr-1147"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["pr-1148"].exists)
+        XCTAssertTrue(app.buttons["pr-1149"].exists)
+        app.buttons["group-waiting"].click()
+        XCTAssertTrue(app.buttons["pr-1150"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["pr-1147"].exists)
+        let filter = app.textFields["pr-filter"]
+        filter.click(); filter.typeText("absent")
+        XCTAssertTrue(app.staticTexts["No matching pull requests"].exists)
+        app.buttons["Clear filter"].click()
+        XCTAssertTrue(app.buttons["pr-1150"].waitForExistence(timeout: 5))
+        let reviewsShot = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+        reviewsShot.name = "Focus Review requests list"
+        reviewsShot.lifetime = .keepAlways
+        add(reviewsShot)
+        app.buttons["nav-authored"].click()
+        XCTAssertTrue(app.buttons["pr-1147"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["group-waiting"].exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "authored-summary").firstMatch.exists)
+        let authoredShot = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+        authoredShot.name = "Focus My pull requests list"
+        authoredShot.lifetime = .keepAlways
+        add(authoredShot)
+        app.buttons["pr-1147"].click()
+        XCTAssertTrue(app.buttons["back-to-my-prs"].waitForExistence(timeout: 5))
+        app.buttons["back-to-my-prs"].click()
+        XCTAssertTrue(app.buttons["pr-1147"].waitForExistence(timeout: 5))
+    }
     func testMyPullRequestReviewsAndBackPreserveFilter() {
         let app = launch("connected")
         XCTAssertTrue(app.buttons["nav-authored"].waitForExistence(timeout: 10))
