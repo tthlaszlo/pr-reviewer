@@ -71,7 +71,7 @@ final class WorkspaceUITests: XCTestCase {
         let code = app.staticTexts["review-code-text"].firstMatch
         if !code.exists { app.scrollViews["review-history"].swipeUp() }
         XCTAssertTrue(code.waitForExistence(timeout: 5))
-        XCTAssertTrue(code.label.contains("This is a comment left during a code review."))
+        XCTAssertTrue((code.label + " " + (code.value as? String ?? "")).contains("This is a comment left during a code review."))
         prompt.click()
         XCTAssertEqual(prompt.value as? String, "Collapsed")
         XCTAssertFalse(code.exists)

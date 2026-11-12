@@ -69,12 +69,7 @@ private struct MessageBlock: View {
                 }.padding(12)
             }.background(Focus.background).clipShape(RoundedRectangle(cornerRadius: 6))
         case .disclosure(let title, let blocks):
-            DisclosureGroup {
-                MessageBlocks(blocks: blocks).padding(.top, 12)
-            } label: {
-                Label(title, systemImage: "text.alignleft").font(Focus.font(12, weight: .medium))
-                    .foregroundStyle(Focus.accentText)
-            }.disclosureGroupStyle(FocusMessageDisclosureStyle())
+            MessageDisclosure(title: title, blocks: blocks)
                 .padding(12).background(Focus.background).clipShape(RoundedRectangle(cornerRadius: 6))
         case .divider: Rectangle().fill(Focus.border).frame(height: 1)
         }
@@ -92,20 +87,23 @@ private struct MessageBlock: View {
     }
 }
 
-private struct FocusMessageDisclosureStyle: DisclosureGroupStyle {
-    func makeBody(configuration: Configuration) -> some View {
+private struct MessageDisclosure: View {
+    let title: String
+    let blocks: [ReviewMessageBlock]
+    @State private var expanded = false
+    var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Button { configuration.isExpanded.toggle() } label: {
+            Button { expanded.toggle() } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: configuration.isExpanded ? "chevron.down" : "chevron.right")
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 10, weight: .semibold))
-                    configuration.label
+                    Label(title, systemImage: "text.alignleft").font(Focus.font(12, weight: .medium))
                     Spacer(minLength: 0)
                 }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
             }.buttonStyle(.plain).foregroundStyle(Focus.accentText)
                 .accessibilityIdentifier("review-details-toggle")
-                .accessibilityValue(configuration.isExpanded ? "Expanded" : "Collapsed")
-            if configuration.isExpanded { configuration.content }
+                .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+            if expanded { MessageBlocks(blocks: blocks).padding(.top, 12) }
         }
     }
 }
