@@ -29,3 +29,9 @@ AI execution, provider setup, agent processes, review settings/results/posting, 
 A rejected token gates both GitHub pages with `needsReconnection`; permission failures gate only the affected page. In-flight refreshes are invalidated when authorization is rejected or reauthorization begins. Reauthorization replaces the old credential and snapshots only after approval; cancellation/denial keeps the old connection available when it was still valid. A successful retry clears a page's restriction. Network and rate-limit failures retain their ordinary retry/stale-data behavior.
 
 Partial permission failures are typed `GitHubAccessIssue` values in the Inbox, separate from general warnings; remaining PRs are shown with a compact help entry point. Older SQLite snapshots decode with no access metadata, so no cache migration is required. The UI links to the configured OAuth app's GitHub authorization settings, falling back to Applications when the public client ID is absent. No setup screen asks end users to register an OAuth app, enter passwords or paste personal tokens.
+
+## Native Settings
+
+Settings is a page in the existing WorkspaceView, backed by the same Workspace instance as the PR pages. The sidebar button and the Settings menu/keyboard shortcut select this page without opening another window. A focused-scene action routes the menu command to the active workspace window. Connection status is derived centrally from startup, authorization, refresh, access issues and removal results; it is not copied into separate UI state. The view exposes account identity and sync time, never the credential.
+
+Local removal uses the existing generation-based request invalidation and clears Keychain/cache independently. Any cleanup failure remains visible as removalIncomplete, and removal can be retried even after the active in-memory user has been cleared. GitHub-side authorization revocation remains a separate, explicitly linked action.

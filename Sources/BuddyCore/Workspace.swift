@@ -15,6 +15,7 @@ public final class Workspace: ObservableObject {
     @Published public private(set) var restrictedPages: Set<PRPage> = []
     @Published public private(set) var starting = true
     @Published public private(set) var disconnecting = false
+    @Published public private(set) var removalIncomplete = false
     public let configured: Bool
     public let applicationSettingsURL: URL
     private let github: any GitHubServing
@@ -26,6 +27,25 @@ public final class Workspace: ObservableObject {
     private var started = false
     private var connectionTask: Task<Void, Never>?
     private var refreshTasks: [PRPage: Task<Void, Never>] = [:]
+
+    public var connectionStatus: GitHubConnectionStatus {
+        if disconnecting { return .removing }
+        if connecting { return .connecting }
+        if starting { return .checking }
+        if removalIncomplete { return .removalIncomplete }
+        if needsReconnection { return .reconnectRequired }
+        guard user != nil else {
+            if configured && connectionError != nil { return .attentionRequired }
+            return configured ? .disconnected : .notConfigured
+        }
+        if !refreshing.isEmpty { return .checking }
+        if !restrictedPages.isEmpty || inboxes.values.contains(where: { !$0.accessIssues.isEmpty }) { return .limited }
+        if !errors.isEmpty || connectionError != nil { return .attentionRequired }
+        return .connected
+    }
+    public var canRemoveConnection: Bool {
+        user != nil || connecting || removalIncomplete || connectionError != nil
+    }
 
     public init(configured: Bool, github: any GitHubServing, authorization: any GitHubAuthorization,
                 credentials: any CredentialStoring, cache: any InboxStoring,
@@ -151,7 +171,7 @@ public final class Workspace: ObservableObject {
                 return
             }
             credential = saved; user = current; inboxes = [:]; errors = [:]; stale = []
-            needsReconnection = false; restrictedPages = []
+            needsReconnection = false; restrictedPages = []; removalIncomplete = false
             connecting = false; deviceCode = nil
             await refreshAll()
         } catch is CancellationError { }
@@ -174,8 +194,13 @@ public final class Workspace: ObservableObject {
         credential = nil; user = nil; inboxes = [:]; errors = [:]; stale = []; refreshing = []
         deviceCode = nil; connecting = false; connectionError = nil
         needsReconnection = false; restrictedPages = []
-        do { try await credentials.delete() } catch { connectionError = message(error) }
-        do { try await cache.clear() } catch { connectionError = message(error) }
+        removalIncomplete = false
+        var failures: [String] = []
+        do { try await credentials.delete() }
+        catch { removalIncomplete = true; failures.append(message(error)) }
+        do { try await cache.clear() }
+        catch { removalIncomplete = true; failures.append(message(error)) }
+        connectionError = failures.isEmpty ? nil : failures.joined(separator: " ")
         disconnecting = false
     }
     func waitForConnection() async { await connectionTask?.value }

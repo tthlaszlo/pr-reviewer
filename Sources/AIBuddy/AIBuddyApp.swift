@@ -32,6 +32,7 @@ struct AIBuddyApp: App {
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unifiedCompact)
         .commands {
+            GitHubSettingsCommands()
             CommandGroup(after: .newItem) {
                 Button("Refresh pull requests") { Task { await workspace.refreshAll() } }
                     .keyboardShortcut("r")

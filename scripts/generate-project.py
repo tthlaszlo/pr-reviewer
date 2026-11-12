@@ -28,13 +28,17 @@ for file in sorted((root / 'Sources/AIBuddy').glob('*.swift')):
     app_build.append(add('build-' + file.name, f'isa = PBXBuildFile; fileRef = {ref};'))
 resources = add('resources', 'isa = PBXFileReference; lastKnownFileType = folder; path = Sources/AIBuddy/Resources; sourceTree = SOURCE_ROOT;')
 resource_build = add('resources-build', f'isa = PBXBuildFile; fileRef = {resources};')
-ui_ref = add('uitest-file', 'isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIBuddyUITests/WorkspaceUITests.swift; sourceTree = SOURCE_ROOT;')
-ui_build = add('uitest-build', f'isa = PBXBuildFile; fileRef = {ui_ref};')
+ui_refs = []
+ui_builds = []
+for file in sorted((root / 'AIBuddyUITests').glob('*.swift')):
+    ref = add('uitest-' + file.name, f'isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = {quote(file.relative_to(root))}; sourceTree = SOURCE_ROOT;')
+    ui_refs.append(ref)
+    ui_builds.append(add('uitest-build-' + file.name, f'isa = PBXBuildFile; fileRef = {ref};'))
 base = add('base-config', 'isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Base.xcconfig; sourceTree = SOURCE_ROOT;')
 app_product = add('app-product', 'isa = PBXFileReference; explicitFileType = wrapper.application; path = AIBuddy.app; sourceTree = BUILT_PRODUCTS_DIR;')
 ui_product = add('ui-product', 'isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = AIBuddyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR;')
 products = add('products', f'isa = PBXGroup; children = {refs([app_product, ui_product])}; name = Products; sourceTree = "<group>";')
-main = add('main', f'isa = PBXGroup; children = {refs(app_files + [resources, ui_ref, base, products])}; sourceTree = "<group>";')
+main = add('main', f'isa = PBXGroup; children = {refs(app_files + ui_refs + [resources, base, products])}; sourceTree = "<group>";')
 package = add('package', 'isa = XCLocalSwiftPackageReference; relativePath = .;')
 core = add('core-product', f'isa = XCSwiftPackageProductDependency; package = {package}; productName = BuddyCore;')
 core_build = add('core-build', f'isa = PBXBuildFile; productRef = {core};')
@@ -43,7 +47,7 @@ def phase(name, kind, files):
     return add(name, f'isa = {kind}; buildActionMask = 2147483647; files = {refs(files)}; runOnlyForDeploymentPostprocessing = 0;')
 
 app_phases = [phase('app-sources', 'PBXSourcesBuildPhase', app_build), phase('app-frameworks', 'PBXFrameworksBuildPhase', [core_build]), phase('app-resources', 'PBXResourcesBuildPhase', [resource_build])]
-ui_phases = [phase('ui-sources', 'PBXSourcesBuildPhase', [ui_build]), phase('ui-frameworks', 'PBXFrameworksBuildPhase', []), phase('ui-resources', 'PBXResourcesBuildPhase', [])]
+ui_phases = [phase('ui-sources', 'PBXSourcesBuildPhase', ui_builds), phase('ui-frameworks', 'PBXFrameworksBuildPhase', []), phase('ui-resources', 'PBXResourcesBuildPhase', [])]
 
 def configs(name, settings):
     ids = []
