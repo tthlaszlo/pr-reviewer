@@ -86,6 +86,26 @@ private struct FixtureGitHub: GitHubServing {
         if scenario == "empty" { return Inbox(pulls: []) }
         if scenario == "network-error" { throw BuddyError.unavailable }
         if scenario == "partial-empty" { return Inbox(pulls: [], accessIssues: [.teamMembership]) }
+        if scenario == "lists-design" {
+            let titles = ["Improve GitHub synchronization", "Handle organization SSO access without hiding accessible pull requests", "Update dependency cache", "Refine workspace keyboard shortcuts", "Add pagination to repository discovery", "Fix review request timing"]
+            var pulls: [PullRequest] = []
+            let count = page == .reviews ? 6 : 4
+            for index in 0..<count {
+                let number = index + 1147
+                let group: ReviewGroup? = page == .authored ? nil : index < 3 ? .awaiting : index < 5 ? .waiting : .requestedAgain
+                let author = page == .authored ? "local-developer" : ["anna-dev", "martin", "sara"][index % 3]
+                let teams = page == .reviews && index % 2 == 1 ? ["example/backend"] : []
+                let review: String? = page == .reviews && index >= 3 ? "APPROVED" : nil
+                pulls.append(PullRequest(id: Int64(number), number: number, title: titles[index],
+                                         url: URL(string: "https://github.com/example/project/pull/\(number)")!,
+                                         repository: index == 2 ? "example/design-system" : "example/platform",
+                                         author: author, updatedAt: Date().addingTimeInterval(-Double(index + 1) * 1800),
+                                         draft: index == 2, group: group,
+                                         personal: page == .reviews && index % 2 == 0, teams: teams,
+                                         reviewState: review, changedSinceReview: page == .reviews && index == 5))
+            }
+            return Inbox(pulls: pulls)
+        }
         let titles = page == .reviews ? ["Improve GitHub synchronization", "Update local storage", "Fix review request timing"] : ["My native macOS feature"]
         let pulls = titles.enumerated().map { index, title in
             PullRequest(id: Int64(index + 1), number: index + 10, title: title,
