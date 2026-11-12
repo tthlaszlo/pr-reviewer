@@ -62,11 +62,21 @@ final class WorkspaceUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Review summary"].exists)
         XCTAssertTrue(app.staticTexts["P1 Fresh accounts still wait"].exists)
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "<img")).firstMatch.exists)
-        let prompt = app.disclosureTriangles.firstMatch
+        let prompt = app.buttons["review-details-toggle"].firstMatch
         if !prompt.isHittable { app.scrollViews["review-history"].swipeUp() }
         XCTAssertTrue(prompt.waitForExistence(timeout: 5))
+        XCTAssertEqual(prompt.value as? String, "Collapsed")
         prompt.click()
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "This is a comment left during a code review.")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(prompt.value as? String, "Expanded")
+        let code = app.staticTexts["review-code-text"].firstMatch
+        if !code.exists { app.scrollViews["review-history"].swipeUp() }
+        XCTAssertTrue(code.waitForExistence(timeout: 5))
+        XCTAssertTrue(code.label.contains("This is a comment left during a code review."))
+        prompt.click()
+        XCTAssertEqual(prompt.value as? String, "Collapsed")
+        XCTAssertFalse(code.exists)
+        prompt.click()
+        XCTAssertTrue(code.waitForExistence(timeout: 5))
         let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
         attachment.name = "Focus reviewer groups and formatted feedback"
         attachment.lifetime = .keepAlways

@@ -41,7 +41,7 @@ private struct MessageBlock: View {
                 ScrollView(.horizontal) {
                     Text(text.trimmingCharacters(in: .newlines))
                         .font(.system(size: 12, design: .monospaced)).lineSpacing(4)
-                        .textSelection(.enabled).padding(12)
+                        .textSelection(.enabled).padding(12).accessibilityIdentifier("review-code-text")
                 }
             }.background(Focus.background).clipShape(RoundedRectangle(cornerRadius: 6))
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(Focus.border))
@@ -74,7 +74,8 @@ private struct MessageBlock: View {
             } label: {
                 Label(title, systemImage: "text.alignleft").font(Focus.font(12, weight: .medium))
                     .foregroundStyle(Focus.accentText)
-            }.padding(12).background(Focus.background).clipShape(RoundedRectangle(cornerRadius: 6))
+            }.disclosureGroupStyle(FocusMessageDisclosureStyle())
+                .padding(12).background(Focus.background).clipShape(RoundedRectangle(cornerRadius: 6))
         case .divider: Rectangle().fill(Focus.border).frame(height: 1)
         }
     }
@@ -88,5 +89,23 @@ private struct MessageBlock: View {
         return Text(text).textSelection(.enabled).tint(Focus.accentText)
             .accessibilityIdentifier("review-message-text")
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+private struct FocusMessageDisclosureStyle: DisclosureGroupStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button { configuration.isExpanded.toggle() } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: configuration.isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                    configuration.label
+                    Spacer(minLength: 0)
+                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            }.buttonStyle(.plain).foregroundStyle(Focus.accentText)
+                .accessibilityIdentifier("review-details-toggle")
+                .accessibilityValue(configuration.isExpanded ? "Expanded" : "Collapsed")
+            if configuration.isExpanded { configuration.content }
+        }
     }
 }
